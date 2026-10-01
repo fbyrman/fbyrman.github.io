@@ -14,6 +14,9 @@ const research = defineCollection({
     links,
     // Breaks ties within a year: higher comes first.
     order: z.number().default(0),
+    // A standalone page (e.g. an explainer) the entry links to directly;
+    // such an entry gets no page of its own.
+    page: z.string().optional(),
     draft: z.boolean().default(false),
   }),
 });

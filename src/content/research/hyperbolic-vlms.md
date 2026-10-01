@@ -7,6 +7,7 @@ authors: <strong>F. Byrman</strong>, P. Das, S. Verdenius, P. Mettes
 links:
   - label: OpenReview
     url: https://openreview.net/forum?id=zdTnWSMvsX
+draft: true
 ---
 
 Hyperbolic vision-language models extend CLIP-style contrastive learning to hyperbolic

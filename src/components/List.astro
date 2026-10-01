@@ -10,7 +10,7 @@ const shown = limit ? entries.slice(0, limit) : entries;
 {shown.length === 0 && <p class="muted">Nothing here yet.</p>}
 <ul class="list">
   {shown.map((e) => (
-    <Card href={`/${collection}/${e.id}/`} title={e.data.title} summary={e.data.summary}
+    <Card href={('page' in e.data && e.data.page) || `/${collection}/${e.id}/`} title={e.data.title} summary={e.data.summary}
       year={e.data.year} venue={'venue' in e.data ? e.data.venue : undefined}
       stack={'stack' in e.data ? e.data.stack : undefined}
       status={'status' in e.data ? e.data.status : undefined} />

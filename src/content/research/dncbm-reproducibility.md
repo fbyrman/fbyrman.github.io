@@ -7,6 +7,7 @@ authors: <strong>F. Byrman</strong>, E. Kasteleyn, B. Kuipers, D. Uyterlinde
 links:
   - label: OpenReview
     url: https://openreview.net/forum?id=946cT3Jsq5
+draft: true
 ---
 
 Concept bottleneck models make a classifier interpretable by routing its prediction
