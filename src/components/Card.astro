@@ -1,6 +1,6 @@
 ---
 interface Props {
-  href: string; title: string; summary: string; year: number;
+  href: string; title: string; summary?: string; year: number;
   venue?: string; stack?: string[]; status?: string;
 }
 const { href, title, summary, year, venue, stack = [], status } = Astro.props;
@@ -8,7 +8,7 @@ const { href, title, summary, year, venue, stack = [], status } = Astro.props;
 <li class="card">
   <p class="meta">{year}{venue && ` · ${venue}`}{status === 'active' && ' · in progress'}</p>
   <a class="title" href={href}>{title}</a>
-  <p>{summary}</p>
+  {summary && <p>{summary}</p>}
   {stack.length > 0 && <ul class="tags">{stack.map((s) => <li>{s}</li>)}</ul>}
 </li>
 
