@@ -1,0 +1,19 @@
+---
+import Base from './Base.astro';
+interface Props {
+  kind: 'Research' | 'Projects';
+  data: {
+    title: string; summary: string; year: number; venue?: string; authors?: string;
+    stack?: string[]; status?: string; links: { label: string; url: string }[];
+  };
+}
+const { kind, data } = Astro.props;
+---
+<Base title={data.title} description={data.summary}>
+  <p class="meta"><a href={`/${kind.toLowerCase()}/`}>{kind}</a> · {data.year}{data.venue && ` · ${data.venue}`}{data.status === 'active' && ' · in progress'}</p>
+  <h1>{data.title}</h1>
+  {data.authors && <p class="muted" set:html={data.authors} />}
+  {data.stack && data.stack.length > 0 && <ul class="tags">{data.stack.map((s) => <li>{s}</li>)}</ul>}
+  {data.links.length > 0 && <p class="links">{data.links.map((l) => <a href={l.url}>{l.label}</a>)}</p>}
+  <article><slot /></article>
+</Base>

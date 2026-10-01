@@ -1,0 +1,82 @@
+---
+interface Props { title?: string; description?: string }
+const { title, description = 'Freek Byrman: research and projects in machine learning.' } = Astro.props;
+const fullTitle = title ? `${title} · Freek Byrman` : 'Freek Byrman';
+const path = Astro.url.pathname;
+const nav = [
+  { href: '/research/', label: 'Research' },
+  { href: '/projects/', label: 'Projects' },
+];
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <title>{fullTitle}</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <header>
+      <a class="name" href="/">Freek Byrman</a>
+      <nav>
+        {nav.map((n) => (
+          <a href={n.href} aria-current={path.startsWith(n.href) ? 'page' : undefined}>{n.label}</a>
+        ))}
+      </nav>
+    </header>
+    <main><slot /></main>
+    <footer>
+      <a href="mailto:freek.byrman@gmail.com">Email</a>
+      <a href="https://github.com/fbyrman">GitHub</a>
+      <a href="https://scholar.google.nl/citations?user=lFo-JiYAAAAJ">Google Scholar</a>
+    </footer>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --bg: #fbfaf8;
+    --fg: #1d1d1f;
+    --muted: #6b6b70;
+    --rule: #e4e2dd;
+    --accent: #1f5fae;
+    --tag-bg: #eef2f8;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141416;
+      --fg: #e8e6e3;
+      --muted: #9a9aa0;
+      --rule: #2c2c30;
+      --accent: #7fb0f0;
+      --tag-bg: #1e2633;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0 auto;
+    max-width: 44rem;
+    padding: 2.5rem 1rem 3rem;
+    background: var(--bg);
+    color: var(--fg);
+    font: 17px/1.6 Charter, 'Iowan Old Style', Georgia, serif;
+  }
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  header { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; align-items: baseline; justify-content: space-between; margin-bottom: 2.5rem; }
+  header .name { font-weight: 700; font-size: 1.2rem; color: var(--fg); text-decoration: none; }
+  nav { display: flex; gap: 1.25rem; font-family: system-ui, sans-serif; font-size: 0.95rem; }
+  nav a { color: var(--muted); text-decoration: none; }
+  nav a[aria-current='page'], nav a:hover { color: var(--fg); }
+  h1 { font-size: 1.7rem; line-height: 1.25; margin: 0 0 0.5rem; }
+  h2 { font-size: 1.2rem; margin: 2.25rem 0 0.75rem; }
+  .muted { color: var(--muted); }
+  .meta { color: var(--muted); font-family: system-ui, sans-serif; font-size: 0.85rem; }
+  .tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.4rem 0 0; padding: 0; list-style: none; }
+  .tags li { background: var(--tag-bg); border-radius: 4px; padding: 0.05rem 0.45rem; font-family: system-ui, sans-serif; font-size: 0.78rem; }
+  .links { display: flex; flex-wrap: wrap; gap: 1rem; font-family: system-ui, sans-serif; font-size: 0.9rem; }
+  img { max-width: 100%; height: auto; border-radius: 4px; }
+  footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--rule); display: flex; gap: 1.25rem; font-family: system-ui, sans-serif; font-size: 0.9rem; }
+</style>

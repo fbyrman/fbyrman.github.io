@@ -1,0 +1,18 @@
+---
+import { getCollection } from 'astro:content';
+import Card from './Card.astro';
+interface Props { collection: 'research' | 'projects'; limit?: number }
+const { collection, limit } = Astro.props;
+const entries = (await getCollection(collection, ({ data }) => !data.draft))
+  .sort((a, b) => b.data.year - a.data.year);
+const shown = limit ? entries.slice(0, limit) : entries;
+---
+<ul class="list">
+  {shown.map((e) => (
+    <Card href={`/${collection}/${e.id}/`} title={e.data.title} summary={e.data.summary}
+      year={e.data.year} venue={'venue' in e.data ? e.data.venue : undefined}
+      stack={'stack' in e.data ? e.data.stack : undefined}
+      status={'status' in e.data ? e.data.status : undefined} />
+  ))}
+</ul>
+<style>.list { padding: 0; margin: 0; }</style>

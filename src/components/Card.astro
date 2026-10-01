@@ -1,0 +1,21 @@
+---
+interface Props {
+  href: string; title: string; summary: string; year: number;
+  venue?: string; stack?: string[]; status?: string;
+}
+const { href, title, summary, year, venue, stack = [], status } = Astro.props;
+---
+<li class="card">
+  <p class="meta">{year}{venue && ` · ${venue}`}{status === 'active' && ' · in progress'}</p>
+  <a class="title" href={href}>{title}</a>
+  <p>{summary}</p>
+  {stack.length > 0 && <ul class="tags">{stack.map((s) => <li>{s}</li>)}</ul>}
+</li>
+
+<style>
+  .card { padding: 1.1rem 0; border-top: 1px solid var(--rule); list-style: none; }
+  .card .meta { margin: 0; }
+  .title { font-size: 1.1rem; font-weight: 700; color: var(--fg); text-decoration: none; }
+  .title:hover { color: var(--accent); }
+  p { margin: 0.25rem 0 0; }
+</style>
