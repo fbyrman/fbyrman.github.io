@@ -1,0 +1,103 @@
+<section class="tex-section" id="sec-results">
+  <h2 class="sec-title"><span class="num">4</span> Results</h2>
+
+  <p class="table-caption"><span class="table-num">Table 1.</span> Single-shot fine-tuning on
+    grayscale CIFAR-10, for tanh networks, against fine-tuning each test network with SGD.
+    Accuracies are test accuracies in %, averaged over the test networks or for the best
+    one. Test loss is cross-entropy plus the L1 term. Sparsity is the reduction in the total
+    L1 norm of the weights, in %. Time is in seconds per network on one NVIDIA A100: one
+    forward pass for the metanetworks, and for SGD extrapolated from a 30 epoch run. The
+    <span class="best-key">shaded</span> cell marks the best fine-tuned result in each
+    column, per architecture; the time columns are not shaded.</p>
+  <div class="table-scroll">
+    <table class="results">
+      <thead>
+        <tr class="groups">
+          <th></th>
+          <th class="bandB" colspan="3">Cross-entropy (<i>λ</i>&thinsp;=&thinsp;0)</th>
+          <th class="bandA" colspan="4">L1-regularized (<i>λ</i>&thinsp;&gt;&thinsp;0)</th>
+        </tr>
+        <tr>
+          <th class="model">Method</th>
+          <th class="bandB">Avg acc</th><th class="bandB">Max acc</th><th class="bandB">Time</th>
+          <th class="bandA">Avg acc</th><th class="bandA">Test loss (&darr;)</th><th class="bandA">Time</th><th class="bandA">Sparsity</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="enc"><td colspan="8"><em>CNN</em></td></tr>
+        <tr><td class="model">Before fine-tuning</td><td>37.9</td><td>48.6</td><td></td><td>37.9</td><td>3.233</td><td></td><td>0</td></tr>
+        <tr class="sup"><td colspan="8">Metanetworks, one forward pass</td></tr>
+        <tr><td class="model">ScaleGMN-B</td><td>50.3</td><td>55.1</td><td>0.055</td><td>37.4</td><td class="best">1.901</td><td>0.055</td><td class="best">87.6</td></tr>
+        <tr><td class="model">GMN-B, symmetry broken</td><td class="best">51.5</td><td class="best">56.1</td><td>0.054</td><td>35.3</td><td>1.982</td><td>0.054</td><td>85.3</td></tr>
+        <tr class="sup"><td colspan="8">SGD</td></tr>
+        <tr><td class="model">25 epochs</td><td>41.0</td><td>50.6</td><td>59.5</td><td>39.8</td><td>2.651</td><td>82.5</td><td>35.9</td></tr>
+        <tr><td class="model">50 epochs</td><td>41.6</td><td>50.6</td><td>119</td><td>37.9</td><td>2.474</td><td>165</td><td>50.7</td></tr>
+        <tr><td class="model">100 epochs</td><td>43.5</td><td>51.1</td><td>238</td><td>40.4</td><td>2.189</td><td>330</td><td>64.4</td></tr>
+        <tr><td class="model">150 epochs</td><td>44.5</td><td>51.4</td><td>357</td><td class="best">41.6</td><td>2.070</td><td>495</td><td>70.9</td></tr>
+        <tr class="enc"><td colspan="8"><em>MLP</em></td></tr>
+        <tr><td class="model">Before fine-tuning</td><td>34.5</td><td>40.2</td><td></td><td>34.5</td><td>3.258</td><td></td><td>0</td></tr>
+        <tr class="sup"><td colspan="8">Metanetworks, one forward pass</td></tr>
+        <tr><td class="model">ScaleGMN-B</td><td>35.4</td><td>40.7</td><td>0.056</td><td>32.7</td><td>1.964</td><td>0.070</td><td class="best">85.2</td></tr>
+        <tr><td class="model">GMN-B, symmetry broken</td><td>35.0</td><td>40.4</td><td>0.054</td><td>29.8</td><td>2.074</td><td>0.068</td><td>77.4</td></tr>
+        <tr class="sup"><td colspan="8">SGD</td></tr>
+        <tr><td class="model">25 epochs</td><td>35.5</td><td>41.5</td><td>80.0</td><td>36.6</td><td>2.180</td><td>101</td><td>26.2</td></tr>
+        <tr><td class="model">50 epochs</td><td>35.8</td><td>41.4</td><td>160</td><td>37.1</td><td>2.095</td><td>201</td><td>38.8</td></tr>
+        <tr><td class="model">100 epochs</td><td>36.3</td><td>41.8</td><td>320</td><td>38.0</td><td>2.016</td><td>402</td><td>50.1</td></tr>
+        <tr><td class="model">150 epochs</td><td class="best">36.7</td><td class="best">41.9</td><td>480</td><td class="best">38.6</td><td class="best">1.963</td><td>603</td><td>55.2</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tex-subsection" id="subsec-single-shot">
+    <h3 class="subsec-title"><span class="num">4.1</span> One forward pass against 150 epochs</h3>
+
+    <p>
+      On CNNs, a single forward pass of ScaleGMN-B beats 150 epochs of SGD on the
+      objective it was trained for. Without the
+      penalty it lifts the average accuracy of the unseen test networks from 37.9% to
+      50.3%, where SGD reaches 44.5%. With the penalty it reaches a lower test loss than
+      150 epochs of SGD (1.901 against 2.070) and cuts the L1 norm of the weights by 88%,
+      against 71% for SGD, though at a lower accuracy (37.4% against 41.6%). It does all
+      this in about 0.05 seconds per network, where SGD takes six to eight minutes.
+    </p>
+
+    <p>
+      On MLPs the picture is mixed. With the penalty, the metanetwork matches the test loss
+      of 150 epochs of SGD (1.964 against 1.963) with a far sparser network, 85% against
+      55%, but at a lower accuracy. Without the penalty it does about as well as 25 epochs
+      of SGD. We attribute this to the smaller MLP zoo, which gives the metanetwork less to
+      generalize from.
+    </p>
+
+    <p>
+      SGD would keep improving with more epochs, so it is not a competitor to be beaten
+      forever. It is a reference point: a metanetwork that has never seen these networks,
+      or these test images, gets in one step where an optimizer tuned to each network needs
+      minutes.
+    </p>
+  </div>
+
+  <div class="tex-subsection" id="subsec-breaking">
+    <h3 class="subsec-title"><span class="num">4.2</span> Does the equivariance help?</h3>
+
+    <p>
+      For MLPs, yes. Without canonicalization, the metanetwork trains less efficiently, and
+      the symmetry-broken GMN-B ends behind ScaleGMN-B on every accuracy, loss and
+      sparsity measure in Table 1.
+    </p>
+
+    <p>
+      For CNNs the difference is small. The training curves of the two models are largely
+      similar, and on plain cross-entropy the symmetry-broken model is even slightly ahead.
+      The regularized symmetry-broken run did not finish, because of numerical
+      instabilities, which makes its final numbers less conclusive.
+    </p>
+
+    <p>
+      This is exactly what Section 2.3 predicts. A CNN has one scaling symmetry per
+      channel, an MLP one per neuron, so building in scale equivariance has much less to
+      offer for a CNN. <a class="cite" href="#ref-kalogeropoulos2024">Kalogeropoulos et al.</a> saw the same pattern: their largest gains
+      from scale equivariance were on MLPs, and their gains on CNNs were modest.
+    </p>
+  </div>
+</section>

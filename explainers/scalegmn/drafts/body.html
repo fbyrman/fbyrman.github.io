@@ -1,0 +1,459 @@
+<div class="xp">
+
+<p class="lead">
+  Training or fine-tuning a neural network means taking thousands of small gradient steps,
+  each of which needs a pass over the data. This paper asks whether another network can
+  learn to take all of those steps at once: read the weights of a trained network, and
+  return better weights in a single forward pass. The figures below are interactive. Drag
+  the points, move the sliders and try to break things.
+</p>
+
+<!-- ================================================================== -->
+<section id="amortised">
+<h2><span class="num">1</span> Optimisation in one step</h2>
+
+<p>
+  Ordinary optimisation solves every problem from scratch. Gradient descent knows nothing
+  about the thousand similar problems it solved before; it starts at $\theta$ and walks
+  downhill until the loss stops improving. <strong class="term">Amortised
+  optimisation</strong> spends that effort once, up front: it trains a model on a whole
+  family of related problems, so that afterwards it can map a new problem straight to its
+  solution. The cost of optimisation is amortised over the family.
+</p>
+
+<p>
+  In our setting a problem is a trained network, described by its architecture $G$ and
+  weights $\theta$, together with a cost $C$ such as the classification loss on a dataset
+  $D$. The amortised optimiser is itself a network $\hat f_\phi$ with parameters $\phi$, a
+  <strong class="term">metanetwork</strong>, whose input and output are both weights:
+</p>
+
+<div class="equation">
+  \[ \hat f_\phi(G, \theta) \;\approx\; f^*(G,\theta) \in \operatorname*{arg\,min}_{\theta' \in \Theta} \; C(\theta' \mid \theta, G, D) \]
+  <span class="eq-num">(1)</span>
+</div>
+
+<p>
+  Figure 1 shows the idea on a two-dimensional loss landscape. Gradient descent (gold)
+  needs dozens of steps, each one a gradient evaluation. The metanetwork (blue) has seen
+  many landscapes like this one during training, and jumps in a single forward pass. Drag
+  the starting point, or pick another problem from the family below the plot.
+</p>
+
+<figure class="fig" id="fig-landscape">
+  <div class="fig-panel">
+    <div class="fig-controls">
+      <label class="ctl">L1 penalty <span class="var">λ</span>
+        <input type="range" min="0" max="0.5" step="0.01" value="0" data-role="lambda">
+        <output data-role="lambda-val">0.00</output>
+      </label>
+      <button type="button" class="btn" data-role="replay">Replay</button>
+      <button type="button" class="btn" data-role="new">New problems</button>
+    </div>
+    <canvas class="fig-canvas landscape" width="760" height="460" data-role="main"
+      aria-label="Loss landscape with a gradient descent path and a single amortised jump"></canvas>
+    <div class="readout two">
+      <div class="readout-cell sgd">
+        <span class="swatch"></span>
+        <span class="rk">Gradient descent</span>
+        <span class="rv" data-role="sgd-steps">0 steps</span>
+        <span class="rv muted" data-role="sgd-loss"></span>
+      </div>
+      <div class="readout-cell meta">
+        <span class="swatch"></span>
+        <span class="rk">Metanetwork</span>
+        <span class="rv">1 forward pass</span>
+        <span class="rv muted" data-role="meta-loss"></span>
+      </div>
+    </div>
+    <div class="strip" data-role="strip" aria-label="Other problems from the same family"></div>
+  </div>
+  <figcaption>
+    <span class="fig-num">Figure 1.</span> Iterative against amortised optimisation on a
+    family of two-dimensional loss landscapes; darker means lower loss. This is a
+    conceptual picture, after Figure 1 of the paper: the jump is drawn to where a long
+    optimisation run ends, which is the target the metanetwork is trained to approximate.
+    The small panels are other members of the family, each with several starting points.
+    Raising <span class="var">λ</span> adds an L1 penalty that pulls the minimum towards
+    the axes, where weights are zero.
+  </figcaption>
+</figure>
+
+<p>
+  Earlier work on <em>learning to optimise</em> trains networks to act as optimisers, but
+  they remain iterative: they still take many steps and evaluate the objective at each one.
+  Work on <em>weight prediction</em> generates parameters from the architecture alone,
+  $G \to \Theta$, which is fast but cannot start from weights that already exist. We study
+  the remaining case, $G \times \Theta \to \Theta$: take existing weights and return
+  improved ones in one step, for example to fine-tune a network or to make it sparse.
+</p>
+</section>
+
+<!-- ================================================================== -->
+<section id="symmetries">
+<h2><span class="num">2</span> Weight space is full of symmetries</h2>
+
+<p>
+  A metanetwork reads weights, and weights are a redundant description of a network. Many
+  different weight settings compute exactly the same function. Physicists call such a
+  redundancy a <strong class="term">gauge symmetry</strong>: a transformation of the
+  internal description that leaves everything observable unchanged.
+</p>
+
+<p>
+  Two symmetries matter here. The hidden neurons of a layer can be put in any order, as
+  long as their incoming and outgoing weights move with them: a
+  <strong class="term">permutation</strong>. And for many activations, a neuron's incoming
+  weights and bias can be multiplied by a factor $q$, as long as its outgoing weights are
+  divided by the same factor: a <strong class="term">scaling</strong>. With a permutation
+  matrix $P_\ell$ and a diagonal scaling matrix $Q_\ell$ for each layer $\ell$, the
+  transformed weights are
+</p>
+
+<div class="equation">
+  \[ W_\ell' = P_\ell Q_\ell \, W_\ell \, Q_{\ell-1}^{-1} P_{\ell-1}^{-1}, \qquad b_\ell' = P_\ell Q_\ell \, b_\ell \]
+  <span class="eq-num">(2)</span>
+</div>
+
+<p>
+  which leaves the network's output unchanged, provided the activation commutes with the
+  scaling: $\sigma(Q z) = Q\,\sigma(z)$. For ReLU this holds for any positive $q$. For
+  $\tanh$, which is odd but not linear, only $q = \pm 1$ works: a sign flip.
+</p>
+
+<p>
+  Try it in Figure 2. Drag a hidden neuron up or down to reorder the layer, or select one
+  and scale it. The weights change, but the function on the right does not. Then switch
+  off the compensation in the next layer, or switch to $\tanh$ and scale by something
+  other than $\pm 1$, and watch the function break.
+</p>
+
+<figure class="fig" id="fig-neurons">
+  <div class="fig-panel">
+    <div class="fig-controls">
+      <div class="seg" role="radiogroup" aria-label="Activation">
+        <button type="button" role="radio" aria-checked="true" data-act="relu">ReLU</button>
+        <button type="button" role="radio" aria-checked="false" data-act="tanh">tanh</button>
+      </div>
+      <label class="ctl">scale neuron <output data-role="sel-name">h₁</output> by <span class="var">q</span>
+        <input type="range" min="-3" max="3" step="0.01" value="1" data-role="q">
+        <output data-role="q-val">1.00</output>
+      </label>
+      <label class="ctl check"><input type="checkbox" checked data-role="compensate"> divide outgoing weights by <span class="var">q</span></label>
+      <button type="button" class="btn" data-role="shuffle">Shuffle</button>
+      <button type="button" class="btn" data-role="reset">Reset</button>
+    </div>
+    <div class="neuron-grid">
+      <svg class="fig-svg net" viewBox="0 0 380 300" data-role="net" aria-label="A network with two inputs, four hidden neurons and one output"></svg>
+      <div class="fn-wrap">
+        <canvas class="fig-canvas fn" width="300" height="300" data-role="fn" aria-label="The function the network computes"></canvas>
+        <div class="fn-legend"><span>output <span class="var">u</span>(<span class="var">x</span>₁, <span class="var">x</span>₂)</span><span class="dash-key">dashed: original zero line</span></div>
+      </div>
+    </div>
+    <svg class="fig-svg params" viewBox="0 0 760 120" data-role="params" aria-label="All seventeen parameters, now and originally"></svg>
+    <div class="readout two">
+      <div class="readout-cell">
+        <span class="rk">Parameters moved</span>
+        <span class="rv" data-role="dtheta">‖θ′ − θ‖ = 0.00</span>
+      </div>
+      <div class="readout-cell">
+        <span class="rk">Function changed</span>
+        <span class="rv" data-role="df">max |u′ − u| = 0.000</span>
+        <span class="status" data-role="status"></span>
+      </div>
+    </div>
+  </div>
+  <figcaption>
+    <span class="fig-num">Figure 2.</span> A network with two inputs, four hidden neurons
+    and one output. Edge width shows the size of a weight, blue positive and orange
+    negative. Below, all seventeen parameters: bars are the current values, ticks the
+    original ones. Reordering or rescaling hidden neurons moves the parameters, but the
+    function is unchanged whenever the transformation is a true symmetry.
+  </figcaption>
+</figure>
+
+<p>
+  These symmetries are not a curiosity. A layer of $n$ ReLU neurons can be reordered in
+  $n!$ ways and rescaled along $n$ independent directions, so every network is one point
+  on a large set of functionally identical twins. A metanetwork that sees raw weights has
+  to learn, from data, that all of these twins are the same network.
+</p>
+</section>
+
+<!-- ================================================================== -->
+<section id="equivariance">
+<h2><span class="num">3</span> Building the symmetries in</h2>
+
+<p>
+  The alternative is to build the symmetries into the metanetwork, so that it treats
+  functionally identical inputs identically by construction. For a metanetwork that
+  outputs weights, the right property is <strong class="term">equivariance</strong>: if
+  the input network is transformed by a symmetry $\psi$, the output should be transformed
+  in the same way,
+</p>
+
+<div class="equation">
+  \[ \hat f_\phi\bigl(\psi(G,\theta)\bigr) = \psi\bigl(\hat f_\phi(G,\theta)\bigr) \]
+  <span class="eq-num">(3)</span>
+</div>
+
+<p>
+  so that two equivalent networks are mapped to two equivalent networks. We use
+  <strong class="term">Scale Equivariant Graph Metanetworks</strong> (ScaleGMNs,
+  Kalogeropoulos et al., 2024). A ScaleGMN turns the input network into a graph, with
+  neurons as vertices carrying the biases and connections as edges carrying the weights.
+  A graph neural network is unaffected by the order of its vertices, which handles
+  permutations. For scaling, each step of the message passing first brings the features
+  to a <strong class="term">canonical</strong> scale, so the computation cannot depend on
+  which member of a scaling family it was given.
+</p>
+
+<p>
+  Figure 3 shows what goes wrong without this. The network is as small as it can be, one
+  ReLU neuron, $u(x) = v\,\mathrm{ReLU}(w x)$, so its weights $(w, v)$ form a plane. Every
+  point on a hyperbola $wv = c$ computes the same function, the line with slope $c$: the
+  hyperbolas are the <strong class="term">orbits</strong> of the scaling symmetry, and the
+  loss is constant along each of them. The task is to fit slope 1. Slide the input along
+  its orbit. The equivariant map (blue) canonicalises first, so its output always lands on
+  the same orbit, and the function it returns never changes. The map without
+  canonicalisation (rose), here a single large gradient step, returns a different function
+  depending on which twin it was given.
+</p>
+
+<figure class="fig" id="fig-orbits">
+  <div class="fig-panel">
+    <div class="fig-controls">
+      <label class="ctl">move the input along its orbit, <span class="var">q</span>
+        <input type="range" min="-1.1" max="1.1" step="0.005" value="0" data-role="logq">
+        <output data-role="q-val">1.00</output>
+      </label>
+      <button type="button" class="btn" data-role="reset">Reset</button>
+    </div>
+    <div class="orbit-grid">
+      <canvas class="fig-canvas orbit" width="460" height="400" data-role="plane"
+        aria-label="Weight plane of a one-neuron network with scaling orbits"></canvas>
+      <svg class="fig-svg sweep" viewBox="0 0 300 400" data-role="sweep"
+        aria-label="Slope of the output function against position on the input orbit"></svg>
+    </div>
+    <div class="readout three">
+      <div class="readout-cell"><span class="rk">Input function</span><span class="rv" data-role="p-in"></span></div>
+      <div class="readout-cell meta"><span class="swatch"></span><span class="rk">Equivariant output</span><span class="rv" data-role="p-eq"></span></div>
+      <div class="readout-cell broken"><span class="swatch"></span><span class="rk">Without canonicalisation</span><span class="rv" data-role="p-br"></span></div>
+    </div>
+  </div>
+  <figcaption>
+    <span class="fig-num">Figure 3.</span> Left: the weight plane of $u(x) = v\,\mathrm{ReLU}(wx)$,
+    shaded by the loss for fitting slope 1, with the scaling orbits $wv = c$ drawn as thin
+    curves. Drag the input point (black) to start from a different function; the slider
+    moves it along its own orbit, through networks that are all identical. Right: the slope
+    of the returned function as the input moves along the orbit. Equivariance means a flat
+    line. The two toy maps here stand in for the trained metanetworks.
+  </figcaption>
+</figure>
+
+<p>
+  In the paper, the symmetry-broken model is a ScaleGMN with the canonicalisation step
+  removed. Everything else, including the parameter count and the connectivity, stays the
+  same, which makes it a clean test of what the equivariance itself contributes.
+</p>
+</section>
+
+<!-- ================================================================== -->
+<section id="training">
+<h2><span class="num">4</span> Training the metanetwork</h2>
+
+<p>
+  The metanetwork is trained on a zoo of networks that were all trained on the same task,
+  here classifying greyscale CIFAR-10 images. For CNNs we use the public Small CNN Zoo;
+  for MLPs no comparable collection existed, so we trained our own Small MLP Zoo. For
+  every network $\theta$ in a batch, the metanetwork proposes new weights
+  $\hat f_\phi(G,\theta)$, and the loss is computed on what the proposed network does:
+</p>
+
+<div class="equation">
+  \[ \mathcal L(\phi;\theta,B) \;=\; \lambda \,\bigl\lVert \hat f_\phi(G,\theta) \bigr\rVert_1 \;+\; \frac{1}{|B|} \sum_{(x,y)\in B} \mathcal L_{\mathrm{CE}}\bigl(u_{G,\hat f_\phi(G,\theta)}(x),\, y\bigr) \]
+  <span class="eq-num">(4)</span>
+</div>
+
+<p>
+  The second term asks the new network to classify well. The first, an L1 penalty with
+  strength $\lambda$, asks it to be sparse; with $\lambda = 0$ the metanetwork is a pure
+  fine-tuner. The gradient flows through the proposed network back into the metanetwork:
+  we optimise $\phi$, never $\theta$. After training, the metanetwork is applied to
+  networks and data it has never seen.
+</p>
+</section>
+
+<!-- ================================================================== -->
+<section id="results">
+<h2><span class="num">5</span> Results</h2>
+
+<p>
+  We compare one forward pass of the metanetwork against fine-tuning each test network
+  with SGD for 25 to 150 epochs. On CNNs, the single pass beats 150 epochs of SGD, with
+  and without the L1 penalty. With the penalty it also cuts the L1 norm of the weights by
+  88%, against 71% for SGD after 150 epochs. On MLPs it beats SGD on the regularised task;
+  on plain cross-entropy it matches about 25 epochs, which we attribute to the smaller MLP
+  zoo limiting generalisation. All of this takes about 0.05 seconds per network on an
+  NVIDIA A100, against minutes for SGD.
+</p>
+
+<figure class="fig" id="fig-results">
+  <div class="fig-panel">
+    <div class="fig-controls">
+      <div class="seg" role="radiogroup" aria-label="Measure">
+        <button type="button" role="radio" aria-checked="true" data-metric="acc">Accuracy, CE</button>
+        <button type="button" role="radio" aria-checked="false" data-metric="loss">Test loss, L1</button>
+        <button type="button" role="radio" aria-checked="false" data-metric="sparsity">Sparsity, L1</button>
+      </div>
+      <div class="seg" role="radiogroup" aria-label="Architecture">
+        <button type="button" role="radio" aria-checked="true" data-arch="cnn">CNN</button>
+        <button type="button" role="radio" aria-checked="false" data-arch="mlp">MLP</button>
+      </div>
+    </div>
+    <div class="chart-legend">
+      <span class="key meta"><span class="dot"></span>ScaleGMN-B</span>
+      <span class="key broken"><span class="dot hollow"></span>GMN-B, symmetry broken</span>
+      <span class="key sgd"><span class="dot"></span>SGD, 25 to 150 epochs</span>
+      <span class="key init"><span class="dash"></span>before fine-tuning</span>
+    </div>
+    <div class="chart-wrap">
+      <svg class="fig-svg chart" viewBox="0 0 760 360" data-role="chart" aria-label="Result against wall-clock time"></svg>
+      <div class="tooltip" data-role="tip" hidden></div>
+    </div>
+  </div>
+  <figcaption>
+    <span class="fig-num">Figure 4.</span> Each result against the time it took, on a log
+    scale. Accuracy is the average test accuracy on greyscale CIFAR-10 with tanh networks.
+    Test loss is cross-entropy plus the L1 term; sparsity is the reduction in the total L1
+    norm of the weights. The metanetwork timing is one forward pass per network; the SGD
+    timing is extrapolated from a 30 epoch run. Numbers from Table 1 of the paper,
+    reproduced in full below.
+  </figcaption>
+</figure>
+
+<div class="table-scroll">
+<table class="results">
+  <caption>Table 1 of the paper. Tanh networks on greyscale CIFAR-10; time in seconds per network on one A100.</caption>
+  <thead>
+    <tr class="groups"><th></th><th colspan="3">Cross-entropy (λ = 0)</th><th colspan="4">L1-regularised (λ &gt; 0)</th></tr>
+    <tr><th class="model">Method</th><th>Avg acc</th><th>Max acc</th><th>Time</th><th>Avg acc</th><th>Test loss</th><th>Time</th><th>Sparsity</th></tr>
+  </thead>
+  <tbody>
+    <tr class="arch"><td colspan="8">CNN</td></tr>
+    <tr><td class="model">Initial</td><td>37.9</td><td>48.6</td><td></td><td>37.9</td><td>3.233</td><td></td><td>0</td></tr>
+    <tr class="hi"><td class="model">ScaleGMN-B</td><td>50.3</td><td>55.1</td><td>0.055</td><td>37.4</td><td>1.901</td><td>0.055</td><td>87.6</td></tr>
+    <tr><td class="model">GMN-B, sym. broken</td><td>51.5</td><td>56.1</td><td>0.054</td><td>35.3</td><td>1.982</td><td>0.054</td><td>85.3</td></tr>
+    <tr><td class="model">SGD, 25 epochs</td><td>41.0</td><td>50.6</td><td>59.5</td><td>39.8</td><td>2.651</td><td>82.5</td><td>35.9</td></tr>
+    <tr><td class="model">SGD, 50 epochs</td><td>41.6</td><td>50.6</td><td>119</td><td>37.9</td><td>2.474</td><td>165</td><td>50.7</td></tr>
+    <tr><td class="model">SGD, 100 epochs</td><td>43.5</td><td>51.1</td><td>238</td><td>40.4</td><td>2.189</td><td>330</td><td>64.4</td></tr>
+    <tr><td class="model">SGD, 150 epochs</td><td>44.5</td><td>51.4</td><td>357</td><td>41.6</td><td>2.070</td><td>495</td><td>70.9</td></tr>
+    <tr class="arch"><td colspan="8">MLP</td></tr>
+    <tr><td class="model">Initial</td><td>34.5</td><td>40.2</td><td></td><td>34.5</td><td>3.258</td><td></td><td>0</td></tr>
+    <tr class="hi"><td class="model">ScaleGMN-B</td><td>35.4</td><td>40.7</td><td>0.056</td><td>32.7</td><td>1.964</td><td>0.070</td><td>85.2</td></tr>
+    <tr><td class="model">GMN-B, sym. broken</td><td>35.0</td><td>40.4</td><td>0.054</td><td>29.8</td><td>2.074</td><td>0.068</td><td>77.4</td></tr>
+    <tr><td class="model">SGD, 25 epochs</td><td>35.5</td><td>41.5</td><td>80.0</td><td>36.6</td><td>2.180</td><td>101</td><td>26.2</td></tr>
+    <tr><td class="model">SGD, 50 epochs</td><td>35.8</td><td>41.4</td><td>160</td><td>37.1</td><td>2.095</td><td>201</td><td>38.8</td></tr>
+    <tr><td class="model">SGD, 100 epochs</td><td>36.3</td><td>41.8</td><td>320</td><td>38.0</td><td>2.016</td><td>402</td><td>50.1</td></tr>
+    <tr><td class="model">SGD, 150 epochs</td><td>36.7</td><td>41.9</td><td>480</td><td>38.6</td><td>1.963</td><td>603</td><td>55.2</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  Does the equivariance help? On MLPs, yes: in the validation curves of the paper the
+  symmetry-broken model trains less efficiently, and it ends behind ScaleGMN-B on every
+  measure in the table. On CNNs the picture is murkier. The training curves of the two
+  models are largely similar, the broken model is even slightly ahead on plain
+  cross-entropy, and the regularised broken run did not finish because of numerical
+  instabilities. Kalogeropoulos et al. saw the same pattern: their largest gains were on
+  MLPs, and their gains on CNNs were modest. The last section explains why.
+</p>
+</section>
+
+<!-- ================================================================== -->
+<section id="cnn-vs-mlp">
+<h2><span class="num">6</span> Why CNNs have less to gain</h2>
+
+<p>
+  An equivariant metanetwork is only as useful as the symmetry it exploits, so the
+  question is how much scaling freedom each architecture has. Any layer, convolutional
+  ones included, can be written as a matrix product $x_\ell = \sigma(W_\ell x_{\ell-1} + b_\ell)$.
+  For an MLP, $W_\ell$ is an arbitrary dense matrix. For a convolution it is a sparse,
+  structured <strong class="term">doubly-block Toeplitz</strong> matrix, in which every
+  kernel weight is repeated along a diagonal, once for every position the kernel visits.
+</p>
+
+<p>
+  A scaling $Q_\ell W_\ell Q_{\ell-1}^{-1}$ multiplies row $i$ of $W_\ell$ by the factor
+  $q_i$. A dense matrix stays a dense matrix whatever the factors are. But if two rows of a
+  Toeplitz matrix are scaled differently, a kernel weight that appears in both now takes
+  two different values, and the result is no longer a convolution. Figure 5 lets you try
+  this on a 2 × 2 kernel sliding over a 3 × 3 input.
+</p>
+
+<figure class="fig" id="fig-toeplitz">
+  <div class="fig-panel">
+    <div class="fig-controls">
+      <label class="ctl check"><input type="checkbox" data-role="link"> scale all rows together</label>
+      <button type="button" class="btn" data-role="reset">Reset</button>
+    </div>
+    <div class="toeplitz-grid">
+      <div class="row-ctls" data-role="rows"></div>
+      <div class="mat-col">
+        <p class="mat-title">MLP layer: any 4 × 9 matrix</p>
+        <svg class="fig-svg mat" viewBox="0 0 400 168" data-role="mlp" aria-label="Dense weight matrix"></svg>
+        <p class="mat-status" data-role="mlp-status"></p>
+      </div>
+      <div class="mat-col">
+        <p class="mat-title">CNN layer: 2 × 2 kernel over a 3 × 3 input</p>
+        <svg class="fig-svg mat" viewBox="0 0 400 168" data-role="cnn" aria-label="Toeplitz weight matrix of a convolution"></svg>
+        <p class="mat-status" data-role="cnn-status"></p>
+      </div>
+    </div>
+  </div>
+  <figcaption>
+    <span class="fig-num">Figure 5.</span> The same row scalings $q_1, \dots, q_4$ applied to
+    a dense layer and to a convolution written as a matrix. Each cell shows its value; on
+    the right it is also labelled with the kernel weight it comes from. Hover a cell to see
+    every other cell that must stay equal to it. Only scaling all rows by the same factor
+    keeps the convolution intact.
+  </figcaption>
+</figure>
+
+<p>
+  This is the result we prove in the appendix: the set of scalings that preserve a
+  convolutional layer is a strict subset of those that preserve a dense layer. For an MLP
+  layer with $n$ outputs and $m$ inputs, every pair of diagonal matrices
+  $(Q_\ell, Q_{\ell-1})$ is allowed, $n + m$ dimensions of freedom. For a convolution
+  only $Q_\ell = \alpha I$ and $Q_{\ell-1} = \beta I$ survive, and since only the ratio
+  $\alpha / \beta$ affects the weights, that is one dimension per channel. Across a whole
+  network, an MLP has as many scaling directions as it has hidden neurons plus inputs; a
+  CNN has as many as it has channels, usually far fewer. A metanetwork built to exploit
+  these symmetries simply has less to exploit in a CNN.
+</p>
+</section>
+
+<!-- ================================================================== -->
+<section id="takeaways">
+<h2><span class="num">7</span> What to take from it</h2>
+
+<ol class="xp-list">
+  <li>A scale equivariant metanetwork can fine-tune or sparsify networks it has never
+    seen in one forward pass, on several loss landscapes: CNNs and MLPs, tanh and ReLU,
+    with and without an L1 penalty.</li>
+  <li>The benefit of building in scaling symmetries depends on how much scaling symmetry
+    the input architecture has, and convolutions have provably less than dense layers.</li>
+  <li>Two things remain open: extending the approach to arbitrary architectures, and
+    making positive, scale-symmetric models train stably.</li>
+</ol>
+
+<p class="small muted">
+  This is an extended abstract, written at the Universiteit van Amsterdam with Bart
+  Kuipers and Daniel Uyterlinde (equal contribution) and Alejandro García-Castellanos. The
+  code is on <a href="https://github.com/daniuyter/scalegmn_amortization">GitHub</a> and
+  the paper on <a href="https://arxiv.org/abs/2510.08300">arXiv</a>.
+</p>
+</section>
+
+</div>

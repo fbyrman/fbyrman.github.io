@@ -1,0 +1,2505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amortized Optimization with ScaleGMNs</title>
+
+<!--
+  ============================================================================
+  GENERATED FILE: do not edit by hand. Edit the sources in
+  explainers/scalegmn/src/ and run `npm run build` (or `node build.js`) there.
+  ============================================================================
+  Sources:
+    src/template.html      this skeleton (head, hero, script order)
+    src/style.css          base styling from the Gromov loss notes; design
+                           tokens live in :root at the top
+    src/figures.css        styling for this page's interactive figures
+    src/sections/*.html    one <section class="tex-section"> per file, included
+                           in filename order; add a new numbered file to add
+                           a section; the TOC rebuilds itself from <h2>/<h3>
+    src/js/common.js       helpers shared by the figures (canvas, color, contours)
+    src/js/mlp-diagram.js  shared network -> metanetwork -> network diagram
+    src/js/net-play.js     shared network, matrices and checks for Figures 3 and 4
+    src/js/fig-*.js        one script per interactive figure, each in its own
+                           <script> tag below so one failing figure cannot
+                           stop the others
+
+  Authoring conventions inside a section:
+    displayed math    <div class="equation" id="eq:label">\[ ... \]</div>
+                      (numbered automatically in document order)
+    reference         <span class="eqref" data-ref="eq:label"></span>  → "(n)"
+    inline math       $...$ anywhere in a paragraph
+    subsection        <div class="tex-subsection">…</div>
+  ============================================================================
+-->
+
+<!-- MathJax (math rendering, SVG output: draws glyphs as vector paths so
+     nothing depends on an external font file loading) -->
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$']],
+    displayMath: [['\\[', '\\]']],
+    macros: {
+      coloneqq: '\\mathrel{\\vcenter{:}}{=}',
+      argmax: '\\operatorname*{arg\\,max}',
+      argmin: '\\operatorname*{arg\\,min}'
+    }
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg-full.min.js"></script>
+
+<!-- Type -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  /* ---- palette (light) ---- */
+  --paper:      #F3F1EB;
+  --paper-raise:#EAE6DC;
+  --ink:        #1B1D22;
+  --ink-soft:   #55575F;
+  --rule:       #D8D3C6;
+  --accent:     #2E4373;   /* deep indigo — headings, links, rules */
+  --accent-soft:#5B729E;
+  --gold:       #B8863A;   /* equation numbers, small emphasis */
+  --eq-bg:      #FFFFFF;
+  --eq-bg-hit:  #FBF0D9;
+  --shadow:     0 1px 2px rgba(27,29,34,0.06);
+  --winner:     #F2E3B8;   /* results tables: best cell */
+  --bandA:      #E8ECF4;   /* results tables: column-group tints */
+  --bandB:      #EDE9DF;
+  --bandC:      #E6EEE6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:      #15161A;
+    --paper-raise:#1D1F25;
+    --ink:        #EDECE7;
+    --ink-soft:   #A7A9B2;
+    --rule:       #33353D;
+    --accent:     #8FA3D6;
+    --accent-soft:#6B7DA8;
+    --gold:       #E0B15E;
+    --eq-bg:      #1B1D24;
+    --eq-bg-hit:  #3A311C;
+    --shadow:     0 1px 2px rgba(0,0,0,0.35);
+    --winner:     #4A3D1E;
+    --bandA:      #232838;
+    --bandB:      #2A2822;
+    --bandC:      #222B24;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:      #15161A;
+  --paper-raise:#1D1F25;
+  --ink:        #EDECE7;
+  --ink-soft:   #A7A9B2;
+  --rule:       #33353D;
+  --accent:     #8FA3D6;
+  --accent-soft:#6B7DA8;
+  --gold:       #E0B15E;
+  --eq-bg:      #1B1D24;
+  --eq-bg-hit:  #3A311C;
+  --shadow:     0 1px 2px rgba(0,0,0,0.35);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+  font-size: 1.05rem;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+.sans { font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+
+/* ---------------- layout shell ---------------- */
+.shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 230px;
+  gap: 3.5rem;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .toc { display: none; }
+}
+
+/* ---------------- preface ---------------- */
+.preface { margin: 0 0 2.6rem; padding: 0 0 1.8rem; border-bottom: 1px solid var(--rule); }
+.preface p { font-size: 1.05rem; line-height: 1.6; }
+.preface p:last-child { margin-bottom: 0; }
+
+/* ---------------- header / hero ---------------- */
+header.hero {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 3.5rem 1.5rem 1.5rem;
+}
+.hero h1 {
+  font-size: clamp(2.2rem, 4.5vw, 3.4rem);
+  font-weight: 600;
+  line-height: 1.08;
+  margin: 0;
+  color: var(--ink);
+  max-width: 16ch;
+}
+
+/* ---------------- article ---------------- */
+article { min-width: 0; padding-bottom: 6rem; }
+
+.tex-section { margin-top: 3.6rem; }
+.tex-section:first-child, .preface + .tex-section { margin-top: 0; }
+
+h2.sec-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+  font-size: 1.65rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 1.4rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--rule);
+}
+h2.sec-title .num {
+  font-family: Inter, sans-serif;
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 1rem;
+}
+
+.tex-subsection { margin: 2.1rem 0 0; }
+h3.subsec-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 0.9rem;
+}
+h3.subsec-title .num {
+  font-family: Inter, sans-serif;
+  font-weight: 500;
+  color: var(--accent-soft);
+  font-size: 0.85rem;
+}
+
+p { margin: 0 0 1.05rem; max-width: 68ch; }
+p.placeholder { font-style: italic; color: var(--accent-soft); }
+ol.tex-list { margin: 0 0 1.05rem; padding-left: 1.6rem; max-width: 68ch; }
+ol.tex-list li { margin: 0 0 0.55rem; padding-left: 0.2rem; }
+ol.tex-list li::marker { color: var(--accent); font-weight: 600; }
+p:last-child { margin-bottom: 0; }
+
+strong.term { color: var(--accent); font-weight: 600; }
+
+/* ---------------- equations ---------------- */
+.equation {
+  position: relative;
+  background: var(--eq-bg);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  margin: 1.5rem 0 1.7rem;
+  padding: 1.35rem 4rem 1.35rem 1.6rem;
+  overflow-x: auto;
+  scroll-margin-top: 2rem;
+  transition: background 0.9s ease, border-color 0.4s ease;
+}
+.equation.flash { background: var(--eq-bg-hit); border-color: var(--gold); }
+.equation mjx-container { margin: 0 !important; }
+.equation .eq-num {
+  position: absolute;
+  right: 1.2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: Inter, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--gold);
+}
+
+.eqref {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--accent-soft);
+  cursor: pointer;
+  font-family: "Source Serif 4", serif;
+}
+.eqref:hover { color: var(--gold); border-color: var(--gold); }
+
+/* ---------------- table of contents ---------------- */
+.toc {
+  position: sticky;
+  top: 2.5rem;
+  padding-top: 0.3rem;
+  font-family: Inter, sans-serif;
+}
+.toc-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin: 0 0 0.9rem;
+}
+.toc ol { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--rule); }
+.toc li { margin: 0; }
+.toc a {
+  display: block;
+  padding: 0.32rem 0 0.32rem 0.9rem;
+  margin-left: -1px;
+  border-left: 1px solid transparent;
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+  text-decoration: none;
+  line-height: 1.35;
+}
+.toc a:hover { color: var(--accent); }
+.toc a.active { color: var(--accent); border-left-color: var(--accent); font-weight: 500; }
+.toc ol ol a { padding-left: 1.7rem; font-size: 0.82rem; }
+
+/* ---------------- interactive diagrams ---------------- */
+.diagram-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.4rem;
+  margin: 1.7rem 0 1.9rem;
+}
+@media (max-width: 640px) {
+  .diagram-grid { grid-template-columns: 1fr; }
+}
+.diagram-panel {
+  background: var(--eq-bg);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  padding: 1rem 1.1rem 1.2rem;
+}
+.diagram-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin: 0 0 0.6rem;
+}
+.diagram-reset {
+  font-family: Inter, sans-serif;
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  white-space: nowrap;
+}
+.diagram-reset:hover { color: var(--accent); }
+
+.diagram-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: var(--paper-raise);
+  border-radius: 3px;
+  touch-action: none;
+}
+.diagram-svg .line { stroke-width: 1.5; fill: none; }
+.diagram-svg .pt { cursor: grab; }
+.diagram-svg .pt:active { cursor: grabbing; }
+.diagram-svg .pt.is-fixed { cursor: default; }
+.diagram-svg .pt-label {
+  font-family: "Source Serif 4", serif;
+  font-weight: 700;
+  font-style: italic;
+  font-size: 15px;
+  fill: var(--ink);
+  text-anchor: middle;
+  pointer-events: none;
+}
+.diagram-svg .pt-label.is-origin {
+  font-family: Inter, sans-serif;
+  font-weight: 600;
+  font-style: normal;
+  font-size: 12px;
+  fill: var(--ink-soft);
+}
+
+.legend-panel .diagram-head { justify-content: space-between; flex-wrap: wrap; gap: 0.6rem; }
+.diagram-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1.1rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+.diagram-legend .var {
+  font-family: "Source Serif 4", serif;
+  font-weight: 700;
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+.diagram-legend sub { font-family: "Source Serif 4", serif; font-weight: 700; color: var(--ink); }
+
+.readout {
+  margin-top: 0.9rem;
+  font-family: "Source Serif 4", serif;
+  font-size: 0.92rem;
+}
+.readout-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.22rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.readout-row.result {
+  margin-top: 0.15rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--rule);
+  border-bottom: none;
+  font-weight: 600;
+}
+.readout-row.result .rv { color: var(--gold); }
+.rk .var { font-weight: 700; font-style: italic; }
+.rv { font-variant-numeric: tabular-nums; color: var(--ink); }
+
+/* ---------------- single diagram + ratio gauge ---------------- */
+.diagram-single { max-width: 460px; }
+
+.gauge {
+  margin-top: 0.7rem;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--rule);
+  overflow: hidden;
+}
+.gauge-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--gold);
+  border-radius: 3px;
+  transition: width 0.15s ease;
+}
+
+/* ---------------- tree diagram ---------------- */
+.tree-svg .tree-edge { stroke: var(--rule); stroke-width: 2; }
+.tree-svg .tree-reach { stroke: var(--accent); stroke-width: 3; stroke-linecap: round; opacity: 0.55; }
+.tree-svg .tree-trunk { stroke: var(--gold); stroke-width: 6; stroke-linecap: round; }
+.tree-svg .tree-node {
+  fill: var(--eq-bg);
+  stroke: var(--ink-soft);
+  stroke-width: 1.5;
+  cursor: pointer;
+}
+.tree-svg .tree-node:hover { stroke: var(--accent); }
+.tree-svg .tree-node.is-root { fill: var(--paper-raise); stroke: var(--ink-soft); cursor: default; }
+.tree-svg .tree-node.is-x { fill: var(--accent); stroke: var(--accent); }
+.tree-svg .tree-node.is-y { fill: var(--accent-soft); stroke: var(--accent-soft); }
+.tree-svg .tree-label {
+  font-family: "Source Serif 4", serif;
+  font-weight: 700;
+  font-style: italic;
+  font-size: 13px;
+  fill: var(--ink);
+  text-anchor: middle;
+  pointer-events: none;
+}
+.tree-svg .tree-label.is-root {
+  font-family: Inter, sans-serif;
+  font-weight: 600;
+  font-style: normal;
+  fill: var(--ink-soft);
+}
+
+/* ---------------- hyperbolic loss landscape ---------------- */
+.diagram-single.hyp-panel { max-width: 860px; }
+.hyp-panel .diagram-head { justify-content: space-between; flex-wrap: wrap; gap: 0.6rem; }
+.curvature-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+.curvature-control .var { font-style: italic; font-weight: 700; }
+.curvature-control input[type="range"] { width: 110px; accent-color: var(--accent); }
+.curvature-control span[id$="-val"] {
+  font-variant-numeric: tabular-nums;
+  min-width: 3.2em;
+  text-align: right;
+}
+.hyp-canvas {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  display: block;
+  border-radius: 3px;
+  background: var(--paper-raise);
+  touch-action: none;
+  cursor: grab;
+}
+.hyp-canvas:active { cursor: grabbing; }
+
+/* ---------------- power ratio plot ---------------- */
+.diagram-single.power-panel { max-width: 860px; }
+.power-panel .diagram-head { justify-content: space-between; flex-wrap: wrap; gap: 0.6rem; }
+.power-svg { aspect-ratio: 860 / 460; cursor: crosshair; }
+.power-svg .axis { stroke: var(--ink-soft); stroke-width: 1.2; fill: none; }
+.power-svg .grid { stroke: var(--rule); stroke-width: 1; fill: none; }
+.power-svg .tick-label {
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  fill: var(--ink-soft);
+}
+.power-svg .axis-label {
+  font-family: "Source Serif 4", serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 15px;
+  fill: var(--ink);
+}
+.power-svg .ghost { stroke: var(--accent-soft); stroke-width: 1.2; fill: none; opacity: 0.45; }
+.power-svg .ghost-label {
+  font-family: Inter, sans-serif;
+  font-size: 11px;
+  fill: var(--accent-soft);
+  opacity: 0.85;
+}
+.power-svg .curve { stroke: var(--accent); stroke-width: 2.4; fill: none; }
+.power-svg .tangent { stroke: var(--gold); stroke-width: 1.6; stroke-dasharray: 6 4; fill: none; }
+.power-svg .drop { stroke: var(--rule); stroke-width: 1; stroke-dasharray: 3 3; fill: none; }
+.power-svg .marker { fill: var(--gold); stroke: var(--eq-bg); stroke-width: 2; }
+
+.legend { margin-top: 1.1rem; }
+.legend-caption {
+  font-family: Inter, sans-serif;
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  margin: 0 0 0.4rem;
+}
+.legend-caption .var { font-style: italic; font-weight: 700; }
+.swatch-zero {
+  display: inline-block;
+  width: 1.7em;
+  height: 0.8em;
+  margin: 0 0.3em 0 0;
+  vertical-align: -0.1em;
+  border-radius: 2px;
+  background: repeating-linear-gradient(45deg, #440154 0 3px, #9680aa 3px 5px);
+}
+.legend-bar { width: 100%; height: 14px; display: block; border-radius: 3px; box-shadow: 0 0 0 1px var(--rule); }
+.legend-ticks {
+  position: relative;
+  height: 1.5rem;
+  margin-top: 0.3rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+}
+.legend-tick {
+  position: absolute;
+  top: 0.35rem;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.legend-tick::before {
+  content: "";
+  position: absolute;
+  top: -0.35rem;
+  left: 50%;
+  width: 1px;
+  height: 0.3rem;
+  background: var(--rule);
+  transform: translateX(-50%);
+}
+
+/* ---------------- results tables ---------------- */
+.figure-caption {
+  font-family: Inter, sans-serif;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin: 0.55rem 0 1.6rem;
+}
+.figure-caption .figure-num { font-weight: 600; color: var(--ink); }
+
+.table-caption {
+  max-width: none;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  margin: 2rem 0 0.7rem;
+}
+.table-caption .table-num { font-weight: 600; color: var(--ink); }
+.table-caption .best-key { background: var(--winner); color: var(--ink); padding: 0 0.3em; border-radius: 2px; }
+.table-scroll { overflow-x: auto; margin: 0 0 1.4rem; }
+table.results {
+  border-collapse: collapse;
+  font-family: Inter, sans-serif;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+  border-top: 1.5px solid var(--ink);
+  border-bottom: 1.5px solid var(--ink);
+}
+table.results th, table.results td { padding: 0.3rem 0.5rem; text-align: center; }
+table.results th { font-weight: 500; }
+table.results thead { border-bottom: 1px solid var(--ink); }
+table.results thead tr.groups th { padding-bottom: 0.2rem; }
+table.results tr.enc td { text-align: left; padding-top: 0.45rem; color: var(--ink-soft); }
+table.results tr.enc:not(:first-child) td { border-top: 1px solid var(--rule); }
+table.results tr.sup td { text-align: left; padding: 0.35rem 0.5rem 0.15rem 1.1rem; font-size: 0.85em; color: var(--ink-soft); }
+table.results td.model, table.results th.model { text-align: left; }
+table.results td.best { background: var(--winner); font-weight: 600; }
+table.results .bandA { background: var(--bandA); }
+table.results .bandB { background: var(--bandB); }
+table.results .bandC { background: var(--bandC); }
+table.results th.rot { vertical-align: bottom; height: 6.2rem; padding-bottom: 0.4rem; }
+table.results th.rot span { writing-mode: vertical-rl; transform: rotate(180deg); display: inline-block; }
+.ro { font-family: "Source Serif 4", serif; font-size: 0.85rem; }
+
+/* ---------------- tokens added for this page ---------------- */
+:root {
+  /* Figure identities, the same in every figure: metanetwork, iterative
+     optimiser, symmetry-broken model. Validated for colour-blind separation
+     against --eq-bg in both modes. */
+  --c-meta:   #1F5FAE;
+  --c-sgd:    #B8863A;
+  --c-broken: #B0475C;
+  /* Negative weights; positive weights use --c-meta. */
+  --warm:     #C0632A;
+  --ok:       #2F7D4F;
+  /* Loss landscapes: deep at low loss, fading into the panel at high loss. */
+  --land-0:   #15305F;
+  --land-1:   #3B68A6;
+  --land-2:   #9DBBE0;
+  --land-3:   #F4F2EC;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --c-meta:   #5A8ED8;
+    --c-sgd:    #B8873A;
+    --c-broken: #CF5F80;
+    --warm:     #E08A55;
+    --ok:       #6CC08E;
+    --land-0:   #C3DAFB;
+    --land-1:   #5F8FD0;
+    --land-2:   #2B4670;
+    --land-3:   #1B1D24;
+  }
+}
+:root[data-theme="dark"] {
+  --c-meta:   #5A8ED8;
+  --c-sgd:    #B8873A;
+  --c-broken: #CF5F80;
+  --warm:     #E08A55;
+  --ok:       #6CC08E;
+  --land-0:   #C3DAFB;
+  --land-1:   #5F8FD0;
+  --land-2:   #2B4670;
+  --land-3:   #1B1D24;
+}
+
+/* ---------------- hero additions ---------------- */
+.hero .back { margin: 0 0 1.2rem; font-size: 0.85rem; }
+.hero .back a { color: var(--ink-soft); text-decoration: none; }
+.hero .back a:hover { color: var(--accent); }
+/* A paper title is longer than the Gromov hero expects: smaller and wider. */
+.hero h1.paper-title {
+  font-size: clamp(1.8rem, 3.4vw, 2.6rem);
+  line-height: 1.15;
+  max-width: 30ch;
+}
+.hero .authors {
+  margin: 1.1rem 0 0;
+  font-size: 1.1rem;
+  color: var(--ink);
+}
+.hero .authors .me { font-weight: 700; }
+.hero .venue {
+  margin: 0.4rem 0 2.6rem;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+.hero .venue a { color: var(--accent); }
+
+/* ---------------- interactive figures ---------------- */
+.xp-fig {
+  background: var(--eq-bg);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  padding: 1rem 1.1rem 1.1rem;
+  margin: 1.7rem 0 0;
+}
+.xp-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.2rem;
+  margin: 0 0 0.8rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+.xp-controls .var { font-family: "Source Serif 4", serif; font-style: italic; font-weight: 700; color: var(--ink); }
+.xp-controls label { display: inline-flex; align-items: center; gap: 0.5rem; }
+.xp-controls input[type="range"] { width: 120px; accent-color: var(--accent); }
+.xp-controls output { font-variant-numeric: tabular-nums; min-width: 2.6em; color: var(--ink); }
+.xp-btn {
+  font-family: Inter, sans-serif;
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+.xp-btn:hover { color: var(--accent); }
+
+.xp-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 3px;
+  background: var(--paper-raise);
+  touch-action: none;
+}
+.xp-canvas.landscape { cursor: crosshair; }
+
+.xp-readout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem 1.4rem;
+  margin-top: 0.8rem;
+  font-family: "Source Serif 4", serif;
+  font-size: 0.92rem;
+}
+.xp-readout.three { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 640px) { .xp-readout, .xp-readout.three { grid-template-columns: 1fr; } }
+.xp-readout .cell {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.22rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.xp-readout .cell .rk { flex: 1; white-space: nowrap; }
+.xp-readout .cell .rv { font-variant-numeric: tabular-nums; }
+.xp-readout .cell .rv.soft { color: var(--ink-soft); }
+.xp-readout .swatch { width: 9px; height: 9px; border-radius: 50%; align-self: center; }
+.xp-readout .meta .swatch { background: var(--c-meta); }
+.xp-readout .sgd .swatch { background: var(--c-sgd); }
+
+/* Figure 1: weight prediction diagram */
+.xp-svg { display: block; width: 100%; height: auto; }
+.xp-svg .fp-label { font-family: "Source Serif 4", serif; font-size: 15px; fill: var(--ink); }
+.xp-svg .fp-box { font-family: Inter, sans-serif; font-weight: 600; font-size: 14px; fill: var(--ink); }
+.xp-svg .fp-math { font-family: "Source Serif 4", serif; font-size: 17px; fill: var(--ink-soft); }
+/* Symbols set as in the math: G italic, theta bold italic, Theta upright. */
+.xp-svg .sym { font-style: italic; }
+.xp-svg .sym-bold { font-style: italic; font-weight: 700; }
+.xp-svg .sym-up { font-style: normal; }
+/* Weight values sit on their edges, on a small backing (see fig-predict.js). */
+.xp-svg .fp-weight {
+  font-family: Inter, sans-serif;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  fill: var(--ink);
+}
+
+/* Figure 3: permutation playground */
+.xp-svg .pm-node { fill: var(--eq-bg); stroke: var(--ink); stroke-width: 1.5px; }
+.xp-svg .pm-hidden { cursor: grab; outline: none; }
+.xp-svg .pm-hidden:active { cursor: grabbing; }
+.xp-svg .pm-hidden.is-active .pm-node { stroke: var(--accent); stroke-width: 3px; }
+.xp-svg .pm-hidden:focus-visible .pm-node { stroke: var(--accent); stroke-width: 3px; stroke-dasharray: 3 2; }
+.xp-svg .pm-name { font-family: "Source Serif 4", serif; font-style: italic; font-weight: 700; font-size: 14px; fill: var(--ink); pointer-events: none; }
+.xp-svg .pm-cell.is-active { stroke: var(--accent); stroke-width: 2px; }
+.xp-svg .pm-mat { font-family: "Source Serif 4", serif; font-style: italic; font-weight: 700; font-size: 16px; fill: var(--ink); }
+.xp-svg .pm-rowlabel { font-family: "Source Serif 4", serif; font-style: italic; font-size: 13px; fill: var(--ink-soft); }
+.xp-svg .pm-rowlabel.is-active { fill: var(--accent); font-weight: 700; }
+.xp-hint { font-family: Inter, sans-serif; font-size: 0.78rem; color: var(--ink-soft); }
+.xp-readout .rv .var { font-family: "Source Serif 4", serif; font-style: italic; }
+
+/* Figure 4: scaling playground */
+.xp-svg .pm-badge { font-family: Inter, sans-serif; font-weight: 600; font-size: 11px; fill: var(--accent); }
+.xp-seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.xp-seg button {
+  font-family: Inter, sans-serif;
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  padding: 0.2rem 0.65rem;
+  cursor: pointer;
+}
+.xp-seg button + button { border-left: 1px solid var(--rule); }
+.xp-seg button[aria-checked="true"] { background: var(--paper-raise); color: var(--ink); }
+.xp-controls .check { gap: 0.4rem; }
+.xp-controls .check input { accent-color: var(--accent); margin: 0; }
+.xp-readout .status { font-family: Inter, sans-serif; font-size: 0.8rem; font-weight: 600; }
+.xp-readout .status.ok { color: var(--ok, #2F7D4F); }
+.xp-readout .status.bad { color: var(--c-broken); }
+
+/* Figure 5: CNN symmetries */
+.xp-svg .cn-input { fill: var(--paper-raise); stroke: var(--rule); }
+.xp-svg .cn-label { font-family: Inter, sans-serif; font-size: 11.5px; fill: var(--ink-soft); }
+.xp-svg .cn-sub { font-family: Inter, sans-serif; font-size: 10px; fill: var(--ink-soft); text-anchor: middle; }
+.xp-svg .cn-wire { stroke: var(--ink-soft); stroke-width: 1.2px; stroke-opacity: 0.5; }
+.xp-svg .cn-wire.is-active { stroke: var(--accent); stroke-opacity: 1; stroke-width: 1.8px; }
+.xp-svg .cn-card { cursor: grab; outline: none; }
+.xp-svg .cn-card:active { cursor: grabbing; }
+.xp-svg .cn-card-bg { fill: var(--eq-bg); stroke: var(--rule); stroke-width: 1.2px; }
+.xp-svg .cn-card.is-active .cn-card-bg { stroke: var(--accent); stroke-width: 2.4px; }
+.xp-svg .cn-card:focus-visible .cn-card-bg { stroke: var(--accent); stroke-width: 2.4px; stroke-dasharray: 4 3; }
+.xp-svg .cn-fmap { fill: var(--paper-raise); stroke: var(--rule); }
+.xp-svg .fp-weight.is-scaled, .xp-svg .cn-sub.is-scaled { fill: var(--accent); font-weight: 600; }
+.xp-svg .pm-badge.is-idle { fill: var(--ink-soft); font-weight: 500; }
+
+/* Figure 6: equivariance square */
+.xp-svg .eq-name { font-family: "Source Serif 4", serif; font-style: italic; font-weight: 700; font-size: 11px; fill: var(--ink); }
+.xp-svg .eq-arrow { stroke: var(--ink-soft); stroke-width: 1.6px; }
+.xp-svg .eq-head { fill: var(--ink-soft); }
+.xp-svg .eq-arrow-label { font-family: Inter, sans-serif; font-size: 12px; fill: var(--ink-soft); }
+.xp-svg .eq-diff { stroke: var(--c-broken); stroke-width: 7px; stroke-opacity: 0.35; stroke-linecap: round; fill: none; }
+
+/* Citations, links and references */
+a.cite { color: var(--accent); text-decoration: none; border-bottom: 1px dotted var(--accent-soft); }
+a.cite:hover { color: var(--gold); border-color: var(--gold); }
+.xp-refs li:target { background: var(--eq-bg-hit); border-radius: 3px; }
+.xp-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.9rem; margin: 0 0 1.6rem; max-width: 42rem; }
+@media (max-width: 640px) { .xp-links { grid-template-columns: 1fr; } }
+.xp-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.8rem 1rem;
+  background: var(--eq-bg);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+.xp-link:hover { border-color: var(--accent); }
+.xp-link-kind { font-family: Inter, sans-serif; font-size: 0.72rem; font-weight: 600; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; }
+.xp-link-title { font-family: "Source Serif 4", serif; font-size: 1.05rem; color: var(--accent); }
+.xp-refs { padding-left: 1.4rem; max-width: 42rem; font-size: 0.92rem; line-height: 1.55; }
+.xp-refs li { margin: 0 0 0.6rem; padding: 0.1rem 0.3rem; }
+.xp-refs li::marker { color: var(--ink-soft); font-family: Inter, sans-serif; font-size: 0.8rem; }
+.xp-refs a { color: var(--accent); }
+.xp-controls .qsym { font-family: "Source Serif 4", serif; font-style: italic; font-weight: 400; font-size: 0.95rem; color: var(--ink); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <p class="back sans"><a href="/research/scale-equivariant-metanetworks/">← Freek Byrman, research</a></p>
+  <h1 class="paper-title">Symmetry-Aware Fully-Amortized Optimization with Scale Equivariant Graph Metanetworks</h1>
+  <p class="authors">B. Kuipers, <span class="me">F. Byrman</span>, D. Uyterlinde, A. García-Castellanos</p>
+  <p class="venue sans">NeurIPS 2025 UniReps Workshop, Extended Abstract Track</p>
+</header>
+
+<div class="shell">
+  <article>
+
+<section class="tex-section" id="sec-motivation">
+  <h2 class="sec-title"><span class="num">1</span> Motivation</h2>
+
+  <p>
+    Neural networks have grown exponentially in scale, and so has the bill for training
+    them. Yet every network still starts life the same way: random weights, followed by
+    thousands of gradient steps until the loss stops falling. Much of that effort goes
+    into rediscovering what earlier training runs on similar problems already found. So it
+    is worth asking whether optimization itself can be learned.
+  </p>
+
+  <p>
+    <strong class="term">Metanetworks</strong>, neural networks that take other neural
+    networks as input, are a natural tool for this. One application is weight prediction:
+    given only the architecture $G \in \mathcal{G}$ of a new network, a metanetwork
+    predicts a full set of weights $\boldsymbol{\theta} \in \Theta$ for it in a single
+    forward pass. It learns a map $\mathcal{G} \to \Theta$ from architecture space to
+    parameter space (<a class="cite" href="#ref-zhang2020">Zhang et al., 2020</a>; <a class="cite" href="#ref-knyazev2021">Knyazev et al., 2021</a>).
+  </p>
+
+  <figure class="xp-fig" id="fig-predict">
+    <svg class="xp-svg" viewBox="0 0 760 250" role="img"
+      aria-label="An MLP architecture without weights goes into a metanetwork, which outputs the same MLP with initialized weights"></svg>
+  </figure>
+  <p class="figure-caption">
+    <span class="figure-num">Figure 1.</span> Weight prediction. The metanetwork sees only
+    the architecture, a small MLP here, and returns a full set of weights for it. Edge width
+    shows the size of a weight, blue positive and orange negative; the numbers are
+    illustrative.
+  </p>
+
+  <p>
+    Predicted weights are rarely the finished product. You will usually still run some
+    gradient descent to reach the accuracy you want, but you start from a better place in
+    the loss landscape.
+  </p>
+
+  <p>
+    In practice, though, we rarely start from scratch. More often we already have a
+    trained network and want to improve it: make it more accurate, say, or make it
+    sparse. That raises a natural question: can the same principle work for networks whose
+    weights already contain information? This is what our proof-of-concept paper is about.
+    The metanetwork reads the existing weights $\boldsymbol{\theta}$ alongside the
+    architecture and returns improved weights $\boldsymbol{\theta}'$ in one forward pass: a
+    map $\mathcal{G} \times \Theta \to \Theta$.
+  </p>
+
+  <figure class="xp-fig" id="fig-amortize">
+    <svg class="xp-svg" viewBox="0 0 760 250" role="img"
+      aria-label="An MLP with existing weights goes into a metanetwork, which outputs the same MLP with improved weights"></svg>
+  </figure>
+  <p class="figure-caption">
+    <span class="figure-num">Figure 2.</span> Our setting. The metanetwork now reads the
+    weights the network already has and returns improved ones. No gradient step ever
+    touches the network itself. The numbers are illustrative.
+  </p>
+</section>
+
+<section class="tex-section" id="sec-symmetries">
+  <h2 class="sec-title"><span class="num">2</span> Weight space symmetries</h2>
+
+  <p>
+    Take a trained network and swap two of its hidden neurons, together with their
+    weights. The list of weights now looks different, but the network computes exactly the
+    same function. A change to the weights that leaves the function untouched is called a
+    <strong class="term">symmetry</strong>, and for a model
+    that works on weights, symmetries are knowledge worth building in. If the model already
+    knows which weights describe the same network, it does not have to learn this from
+    data or spend capacity on the redundancy, which makes it more efficient to train. Two
+    symmetries matter here: reordering hidden neurons, and rescaling them.
+  </p>
+
+  <div class="tex-subsection" id="subsec-permutations">
+    <h3 class="subsec-title"><span class="num">2.1</span> Permutations</h3>
+
+    <p>
+      A hidden layer is a set of neurons, and the order in which we store them is pure
+      bookkeeping. Reorder the hidden neurons, taking their incoming and outgoing weights
+      along, and the network computes exactly the same function. Try it in Figure 3: drag
+      a hidden neuron up or down. The weight matrices a metanetwork would read change, as
+      rows of $W_1$ and columns of $W_2$ swap places, but every input still gives the same
+      output.
+    </p>
+
+    <figure class="xp-fig" id="fig-permute">
+      <div class="xp-controls">
+        <span class="xp-hint">Drag a hidden neuron up or down, or focus one and use the arrow keys.</span>
+        <button type="button" class="xp-btn" data-role="shuffle">Shuffle</button>
+        <button type="button" class="xp-btn" data-role="reset">Reset</button>
+      </div>
+      <svg class="xp-svg" viewBox="0 0 760 300" role="group"
+        aria-label="A 2-3-2 network whose hidden neurons can be reordered, next to its weight matrices"></svg>
+      <div class="xp-readout three">
+        <div class="cell">
+          <span class="rk">Hidden order</span>
+          <span class="rv" data-role="order"></span>
+        </div>
+        <div class="cell">
+          <span class="rk">Weights moved, ‖<span class="var">θ′ − θ</span>‖</span>
+          <span class="rv" data-role="dtheta"></span>
+        </div>
+        <div class="cell">
+          <span class="status" data-role="status"></span>
+        </div>
+      </div>
+    </figure>
+    <p class="figure-caption">
+      <span class="figure-num">Figure 3.</span> Permuting hidden neurons. The network uses
+      ReLU and the weights of Figure 1, without biases. On the right, the weight matrices
+      as stored: $W_1$ has one row per hidden neuron, $W_2$ one column.
+    </p>
+  </div>
+
+  <div class="tex-subsection" id="subsec-scaling">
+    <h3 class="subsec-title"><span class="num">2.2</span> Scaling</h3>
+
+    <p>
+      For many activations you can also rescale a neuron. Multiply its incoming weights by
+      a factor $q$, divide its outgoing weights by the same factor, and the network
+      computes the same function, provided the activation commutes with the scaling:
+      $\sigma(qz) = q\,\sigma(z)$. For ReLU that holds for every $q &gt; 0$. For $\tanh$,
+      which is odd but not linear, it only holds for $q = \pm 1$: you can flip the sign of
+      a neuron, but not stretch it. Try it in Figure 4: select a hidden neuron and move
+      the slider, then switch to $\tanh$, or stop dividing the outgoing weights, and watch
+      the function break.
+    </p>
+
+    <figure class="xp-fig" id="fig-scale">
+      <div class="xp-controls">
+        <div class="xp-seg" role="radiogroup" aria-label="Activation">
+          <button type="button" role="radio" aria-checked="true" data-act="relu">ReLU</button>
+          <button type="button" role="radio" aria-checked="false" data-act="tanh">tanh</button>
+        </div>
+        <label>scale <span data-role="sel">h₁</span> by <span class="qsym" data-role="q-name">q₁</span>
+          <input type="range" min="-3" max="3" step="0.01" value="1" data-role="q">
+          <output data-role="q-val">1.00</output>
+        </label>
+        <label class="check"><input type="checkbox" checked data-role="compensate"> divide outgoing weights by <span class="qsym">q</span></label>
+        <button type="button" class="xp-btn" data-role="reset">Reset</button>
+      </div>
+      <svg class="xp-svg" viewBox="0 0 760 300" role="group"
+        aria-label="A 2-3-2 network whose hidden neurons can be rescaled, next to its weight matrices"></svg>
+      <div class="xp-readout">
+        <div class="cell">
+          <span class="rk">Weights moved, ‖<span class="var">θ′ − θ</span>‖</span>
+          <span class="rv" data-role="dtheta"></span>
+        </div>
+        <div class="cell">
+          <span class="status" data-role="status"></span>
+        </div>
+      </div>
+    </figure>
+    <p class="figure-caption">
+      <span class="figure-num">Figure 4.</span> Scaling hidden neurons. Click a hidden
+      neuron to select it; the slider sets its factor $q$, which snaps to $\pm 1$. The
+      network is the one of Figure 3.
+    </p>
+  </div>
+
+  <div class="tex-subsection" id="subsec-cnn">
+    <h3 class="subsec-title"><span class="num">2.3</span> Symmetries in a CNN</h3>
+
+    <p>
+      Convolutional networks have the same two symmetries, with channels in the role of
+      neurons. Reorder the channels of a layer, taking each channel's kernel and its slice
+      of the next layer's kernel along, and nothing changes. Multiply a channel's kernel by
+      $q &gt; 0$ and divide its slice of the next kernel by $q$, and for ReLU nothing
+      changes either. Try both in Figure 5.
+    </p>
+
+    <figure class="xp-fig" id="fig-cnn">
+      <div class="xp-controls">
+        <label>scale <span data-role="sel">c₁</span> by <span class="qsym" data-role="q-name">q₁</span>
+          <input type="range" min="0.1" max="3" step="0.01" value="1" data-role="q">
+          <output data-role="q-val">1.00</output>
+        </label>
+        <button type="button" class="xp-btn" data-role="shuffle">Shuffle</button>
+        <button type="button" class="xp-btn" data-role="reset">Reset</button>
+      </div>
+      <svg class="xp-svg" viewBox="0 0 760 368" role="group"
+        aria-label="A tiny CNN with three channels whose order and scale can be changed"></svg>
+      <div class="xp-readout">
+        <div class="cell">
+          <span class="rk">Channel order</span>
+          <span class="rv" data-role="order"></span>
+        </div>
+        <div class="cell">
+          <span class="status" data-role="status"></span>
+        </div>
+      </div>
+    </figure>
+    <p class="figure-caption">
+      <span class="figure-num">Figure 5.</span> A tiny CNN: a $3 \times 3$ input, three
+      channels with $2 \times 2$ kernels and ReLU, and a second layer that maps the three
+      $2 \times 2$ feature maps to one output. Drag a channel to reorder it; click one to
+      select it for scaling.
+    </p>
+
+    <p>
+      Notice that you can only scale whole channels. In the MLP every hidden neuron could be
+      scaled on its own. In a CNN, every position of a feature map is a neuron too, but all
+      positions of a channel are computed with the same kernel. A convolutional layer has
+      no separate weights per position, so there is nothing to scale one position with:
+      giving one position its own factor would need a different kernel at that position,
+      and the layer would no longer be a convolution.
+    </p>
+
+    <p>
+      So a convolutional layer has one scaling factor per channel, where a dense layer has
+      one per neuron. In the language of physics, its <strong class="term">gauge
+      freedom</strong> is smaller. We prove this in the paper: the scaling symmetries of a
+      convolutional layer are a strict subset of those of a dense layer with the same
+      inputs and outputs. Across a whole network the gap is large. An MLP has as many
+      scaling directions as it has hidden neurons and inputs; a CNN has as many as it has
+      channels, which is usually far fewer.
+    </p>
+  </div>
+</section>
+
+<section class="tex-section" id="sec-method">
+  <h2 class="sec-title"><span class="num">3</span> Method</h2>
+
+  <p>
+    Our metanetwork is a <strong class="term">Scale Equivariant Graph Metanetwork</strong>
+    (ScaleGMN, <a class="cite" href="#ref-kalogeropoulos2024">Kalogeropoulos et al., 2024</a>). It reads a trained network and returns new
+    weights for it, and it has the symmetries of Section 2 built in.
+  </p>
+
+  <div class="tex-subsection" id="subsec-graph">
+    <h3 class="subsec-title"><span class="num">3.1</span> Networks as graphs</h3>
+
+    <p>
+      The metanetwork reads the input network as a graph: neurons are vertices that carry
+      their biases, and connections are edges that carry their weights
+      (<a class="cite" href="#ref-kofinas2024">Kofinas et al., 2024</a>). For a CNN, channels are the vertices and kernels sit on the edges. A graph has
+      no built-in order, so reordering the neurons of a layer changes nothing for the
+      metanetwork. Permutation symmetry comes for free.
+    </p>
+  </div>
+
+  <div class="tex-subsection" id="subsec-equivariance">
+    <h3 class="subsec-title"><span class="num">3.2</span> Equivariance</h3>
+
+    <p>
+      For scaling, every step inside the metanetwork first brings its inputs to a
+      canonical form, in which all rescaled copies of a neuron look the same. The result is
+      a metanetwork that is <strong class="term">equivariant</strong>: permute or rescale
+      the input network, and the output network is permuted or rescaled in exactly the
+      same way. In Figure 6 that means both routes around the square end at the same
+      network. An ordinary metanetwork has no such guarantee. It has to learn the
+      symmetries from data, and only ever approximately.
+    </p>
+
+    <figure class="xp-fig" id="fig-equivariance">
+      <div class="xp-controls">
+        <div class="xp-seg" role="radiogroup" aria-label="Symmetry">
+          <button type="button" role="radio" aria-checked="true" data-sym="permute">permute</button>
+          <button type="button" role="radio" aria-checked="false" data-sym="scale">scale</button>
+        </div>
+        <div class="xp-seg" role="radiogroup" aria-label="Metanetwork">
+          <button type="button" role="radio" aria-checked="true" data-meta="equivariant">equivariant metanetwork</button>
+          <button type="button" role="radio" aria-checked="false" data-meta="ordinary">ordinary metanetwork</button>
+        </div>
+      </div>
+      <svg class="xp-svg" viewBox="0 0 760 400" role="img"
+        aria-label="A commuting square: a network, its metanetwork output, the network after a symmetry, and the metanetwork output of that"></svg>
+      <div class="xp-readout">
+        <div class="cell"><span class="status" data-role="status"></span></div>
+      </div>
+    </figure>
+    <p class="figure-caption">
+      <span class="figure-num">Figure 6.</span> Equivariance. Going right applies the
+      metanetwork, going down applies the symmetry. Bottom right is reached by applying
+      the symmetry first; edges where it differs from the other route are outlined. Both
+      metanetworks are simple stand-in maps, not trained models: the equivariant one
+      updates each neuron's weights from that neuron alone, the ordinary one adds a fixed
+      correction to every storage position.
+    </p>
+  </div>
+
+  <div class="tex-subsection" id="subsec-training">
+    <h3 class="subsec-title"><span class="num">3.3</span> Training</h3>
+
+    <p>
+      We train on a <strong class="term">model zoo</strong>: a large collection of small
+      networks, all trained to classify grayscale CIFAR-10 images
+      (<a class="cite" href="#ref-krizhevsky2009">Krizhevsky, 2009</a>). For CNNs we use the public Small CNN Zoo
+      (<a class="cite" href="#ref-unterthiner2021">Unterthiner et al., 2021</a>); for MLPs we built our own. For each network in a batch, the
+      metanetwork proposes new weights, and we measure how well the proposed network
+      classifies. Optionally we add a penalty on the size of the weights, which pushes many
+      of them to zero and makes the network sparse. The error flows back through the
+      proposed network into the metanetwork: we train the metanetwork, never the networks
+      in the zoo.
+    </p>
+
+    <p>
+      At test time the metanetwork fine-tunes networks, and images, it has never seen, in
+      a single forward pass. As a reference we fine-tune the same test networks with SGD
+      for 25 to 150 epochs. To isolate what scale equivariance contributes, we also train
+      the same metanetwork without its canonicalization step. In the results, our
+      metanetwork is called ScaleGMN-B and this symmetry-broken version GMN-B.
+    </p>
+  </div>
+</section>
+
+<section class="tex-section" id="sec-results">
+  <h2 class="sec-title"><span class="num">4</span> Results</h2>
+
+  <p class="table-caption"><span class="table-num">Table 1.</span> Single-shot fine-tuning on
+    grayscale CIFAR-10, for tanh networks, against fine-tuning each test network with SGD.
+    Accuracies are test accuracies in %, averaged over the test networks or for the best
+    one. Test loss is cross-entropy plus the L1 term. Sparsity is the reduction in the total
+    L1 norm of the weights, in %. Time is in seconds per network on one NVIDIA A100: one
+    forward pass for the metanetworks, and for SGD extrapolated from a 30 epoch run. The
+    <span class="best-key">shaded</span> cell marks the best fine-tuned result in each
+    column, per architecture; the time columns are not shaded.</p>
+  <div class="table-scroll">
+    <table class="results">
+      <thead>
+        <tr class="groups">
+          <th></th>
+          <th class="bandB" colspan="3">Cross-entropy (<i>λ</i>&thinsp;=&thinsp;0)</th>
+          <th class="bandA" colspan="4">L1-regularized (<i>λ</i>&thinsp;&gt;&thinsp;0)</th>
+        </tr>
+        <tr>
+          <th class="model">Method</th>
+          <th class="bandB">Avg acc</th><th class="bandB">Max acc</th><th class="bandB">Time</th>
+          <th class="bandA">Avg acc</th><th class="bandA">Test loss (&darr;)</th><th class="bandA">Time</th><th class="bandA">Sparsity</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="enc"><td colspan="8"><em>CNN</em></td></tr>
+        <tr><td class="model">Before fine-tuning</td><td>37.9</td><td>48.6</td><td></td><td>37.9</td><td>3.233</td><td></td><td>0</td></tr>
+        <tr class="sup"><td colspan="8">Metanetworks, one forward pass</td></tr>
+        <tr><td class="model">ScaleGMN-B</td><td>50.3</td><td>55.1</td><td>0.055</td><td>37.4</td><td class="best">1.901</td><td>0.055</td><td class="best">87.6</td></tr>
+        <tr><td class="model">GMN-B, symmetry broken</td><td class="best">51.5</td><td class="best">56.1</td><td>0.054</td><td>35.3</td><td>1.982</td><td>0.054</td><td>85.3</td></tr>
+        <tr class="sup"><td colspan="8">SGD</td></tr>
+        <tr><td class="model">25 epochs</td><td>41.0</td><td>50.6</td><td>59.5</td><td>39.8</td><td>2.651</td><td>82.5</td><td>35.9</td></tr>
+        <tr><td class="model">50 epochs</td><td>41.6</td><td>50.6</td><td>119</td><td>37.9</td><td>2.474</td><td>165</td><td>50.7</td></tr>
+        <tr><td class="model">100 epochs</td><td>43.5</td><td>51.1</td><td>238</td><td>40.4</td><td>2.189</td><td>330</td><td>64.4</td></tr>
+        <tr><td class="model">150 epochs</td><td>44.5</td><td>51.4</td><td>357</td><td class="best">41.6</td><td>2.070</td><td>495</td><td>70.9</td></tr>
+        <tr class="enc"><td colspan="8"><em>MLP</em></td></tr>
+        <tr><td class="model">Before fine-tuning</td><td>34.5</td><td>40.2</td><td></td><td>34.5</td><td>3.258</td><td></td><td>0</td></tr>
+        <tr class="sup"><td colspan="8">Metanetworks, one forward pass</td></tr>
+        <tr><td class="model">ScaleGMN-B</td><td>35.4</td><td>40.7</td><td>0.056</td><td>32.7</td><td>1.964</td><td>0.070</td><td class="best">85.2</td></tr>
+        <tr><td class="model">GMN-B, symmetry broken</td><td>35.0</td><td>40.4</td><td>0.054</td><td>29.8</td><td>2.074</td><td>0.068</td><td>77.4</td></tr>
+        <tr class="sup"><td colspan="8">SGD</td></tr>
+        <tr><td class="model">25 epochs</td><td>35.5</td><td>41.5</td><td>80.0</td><td>36.6</td><td>2.180</td><td>101</td><td>26.2</td></tr>
+        <tr><td class="model">50 epochs</td><td>35.8</td><td>41.4</td><td>160</td><td>37.1</td><td>2.095</td><td>201</td><td>38.8</td></tr>
+        <tr><td class="model">100 epochs</td><td>36.3</td><td>41.8</td><td>320</td><td>38.0</td><td>2.016</td><td>402</td><td>50.1</td></tr>
+        <tr><td class="model">150 epochs</td><td class="best">36.7</td><td class="best">41.9</td><td>480</td><td class="best">38.6</td><td class="best">1.963</td><td>603</td><td>55.2</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tex-subsection" id="subsec-single-shot">
+    <h3 class="subsec-title"><span class="num">4.1</span> One forward pass against 150 epochs</h3>
+
+    <p>
+      On CNNs, a single forward pass of ScaleGMN-B beats 150 epochs of SGD on the
+      objective it was trained for. Without the
+      penalty it lifts the average accuracy of the unseen test networks from 37.9% to
+      50.3%, where SGD reaches 44.5%. With the penalty it reaches a lower test loss than
+      150 epochs of SGD (1.901 against 2.070) and cuts the L1 norm of the weights by 88%,
+      against 71% for SGD, though at a lower accuracy (37.4% against 41.6%). It does all
+      this in about 0.05 seconds per network, where SGD takes six to eight minutes.
+    </p>
+
+    <p>
+      On MLPs the picture is mixed. With the penalty, the metanetwork matches the test loss
+      of 150 epochs of SGD (1.964 against 1.963) with a far sparser network, 85% against
+      55%, but at a lower accuracy. Without the penalty it does about as well as 25 epochs
+      of SGD. We attribute this to the smaller MLP zoo, which gives the metanetwork less to
+      generalize from.
+    </p>
+
+    <p>
+      SGD would keep improving with more epochs, so it is not a competitor to be beaten
+      forever. It is a reference point: a metanetwork that has never seen these networks,
+      or these test images, gets in one step where an optimizer tuned to each network needs
+      minutes.
+    </p>
+  </div>
+
+  <div class="tex-subsection" id="subsec-breaking">
+    <h3 class="subsec-title"><span class="num">4.2</span> Does the equivariance help?</h3>
+
+    <p>
+      For MLPs, yes. Without canonicalization, the metanetwork trains less efficiently, and
+      the symmetry-broken GMN-B ends behind ScaleGMN-B on every accuracy, loss and
+      sparsity measure in Table 1.
+    </p>
+
+    <p>
+      For CNNs the difference is small. The training curves of the two models are largely
+      similar, and on plain cross-entropy the symmetry-broken model is even slightly ahead.
+      The regularized symmetry-broken run did not finish, because of numerical
+      instabilities, which makes its final numbers less conclusive.
+    </p>
+
+    <p>
+      This is exactly what Section 2.3 predicts. A CNN has one scaling symmetry per
+      channel, an MLP one per neuron, so building in scale equivariance has much less to
+      offer for a CNN. <a class="cite" href="#ref-kalogeropoulos2024">Kalogeropoulos et al.</a> saw the same pattern: their largest gains
+      from scale equivariance were on MLPs, and their gains on CNNs were modest.
+    </p>
+  </div>
+</section>
+
+<section class="tex-section" id="sec-conclusion">
+  <h2 class="sec-title"><span class="num">5</span> Takeaways and limitations</h2>
+
+  <p>
+    This work is a proof of concept: it shows that a symmetry-aware metanetwork can
+    improve the weights of networks it has never seen in a single forward pass, but only
+    on a small scale, with small networks, small model zoos and grayscale CIFAR-10. Every
+    metanetwork we trained also works on a single architecture, the one in its zoo. The
+    natural next step is a metanetwork that handles varying architectures. The graph view
+    of Section 3 makes this possible in principle, since any network can be written as a
+    graph, but it was beyond the data and scope of this paper.
+  </p>
+</section>
+
+<section class="tex-section" id="sec-links">
+  <h2 class="sec-title">Paper and code</h2>
+
+  <div class="xp-links">
+    <a class="xp-link" href="https://arxiv.org/abs/2510.08300">
+      <span class="xp-link-kind">Paper</span>
+      <span class="xp-link-title">arXiv 2510.08300</span>
+    </a>
+    <a class="xp-link" href="https://openreview.net/forum?id=5fY2uzBu1M">
+      <span class="xp-link-kind">Reviews</span>
+      <span class="xp-link-title">OpenReview</span>
+    </a>
+    <a class="xp-link" href="https://github.com/daniuyter/scalegmn_amortization">
+      <span class="xp-link-kind">Code</span>
+      <span class="xp-link-title">GitHub</span>
+    </a>
+  </div>
+</section>
+
+<section class="tex-section" id="sec-references">
+  <h2 class="sec-title">References</h2>
+
+  <ol class="xp-refs">
+    <li id="ref-kalogeropoulos2024">
+      Ioannis Kalogeropoulos, Giorgos Bouritsas and Yannis Panagakis. Scale Equivariant
+      Graph Metanetworks. 2024.
+      <a href="https://arxiv.org/abs/2406.10685">arXiv:2406.10685</a>.
+    </li>
+    <li id="ref-knyazev2021">
+      Boris Knyazev, Michal Drozdzal, Graham W. Taylor and Adriana Romero-Soriano. Parameter
+      Prediction for Unseen Deep Architectures. 2021.
+      <a href="https://arxiv.org/abs/2110.13100">arXiv:2110.13100</a>.
+    </li>
+    <li id="ref-kofinas2024">
+      Miltiadis Kofinas, Boris Knyazev, Yan Zhang, Yunlu Chen, Gertjan J. Burghouts,
+      Efstratios Gavves, Cees G. M. Snoek and David W. Zhang. Graph Neural Networks for
+      Learning Equivariant Representations of Neural Networks. 2024.
+      <a href="https://arxiv.org/abs/2403.12143">arXiv:2403.12143</a>.
+    </li>
+    <li id="ref-krizhevsky2009">
+      Alex Krizhevsky. Learning Multiple Layers of Features from Tiny Images. Technical
+      report, University of Toronto, 2009.
+    </li>
+    <li id="ref-unterthiner2021">
+      Thomas Unterthiner, Daniel Keysers, Sylvain Gelly, Olivier Bousquet and Ilya
+      Tolstikhin. Predicting Neural Network Accuracy from Weights. 2021.
+      <a href="https://arxiv.org/abs/2002.11448">arXiv:2002.11448</a>.
+    </li>
+    <li id="ref-zhang2020">
+      Chris Zhang, Mengye Ren and Raquel Urtasun. Graph HyperNetworks for Neural
+      Architecture Search. 2020.
+      <a href="https://arxiv.org/abs/1810.05749">arXiv:1810.05749</a>.
+    </li>
+  </ol>
+</section>
+
+  </article>
+
+  <nav class="toc" aria-label="Table of contents">
+    <p class="toc-label">CONTENTS</p>
+    <ol id="toc-list"></ol>
+  </nav>
+</div>
+
+<script>
+// Render all math on the page ($...$ inline, \[...\] display), then run
+// numbering/TOC once MathJax has finished typesetting.
+document.addEventListener("DOMContentLoaded", function () {
+  MathJax.startup.promise.then(setUpPage);
+});
+
+function setUpPage() {
+  // --- Auto-number equations in document order, like LaTeX \label/\eqref ---
+  var equations = Array.prototype.slice.call(document.querySelectorAll(".equation"));
+  var numberOf = {};
+  equations.forEach(function (eqEl, i) {
+    var n = i + 1;
+    numberOf[eqEl.id] = n;
+    var tag = document.createElement("span");
+    tag.className = "eq-num";
+    tag.textContent = "(" + n + ")";
+    eqEl.appendChild(tag);
+  });
+
+  // --- Resolve \eqref-style spans and make them clickable ---
+  document.querySelectorAll(".eqref").forEach(function (span) {
+    var ref = span.getAttribute("data-ref");
+    var n = numberOf[ref];
+    span.textContent = n ? "(" + n + ")" : "(??)";
+    if (n) {
+      span.addEventListener("click", function () {
+        var target = document.getElementById(ref);
+        if (!target) return;
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        target.classList.add("flash");
+        setTimeout(function () { target.classList.remove("flash"); }, 900);
+      });
+    }
+  });
+
+  // --- Build the table of contents from section/subsection headings ---
+  var tocList = document.getElementById("toc-list");
+  document.querySelectorAll(".tex-section").forEach(function (sectionEl) {
+    var h2 = sectionEl.querySelector(":scope > h2.sec-title");
+    if (!h2) return;
+    var li = document.createElement("li");
+    var a = document.createElement("a");
+    a.href = "#" + sectionEl.id;
+    a.textContent = h2.textContent.trim();
+    li.appendChild(a);
+
+    var subOl = document.createElement("ol");
+    sectionEl.querySelectorAll(".tex-subsection").forEach(function (subEl) {
+      var h3 = subEl.querySelector(":scope > h3.subsec-title");
+      if (!h3) return;
+      var subLi = document.createElement("li");
+      var subA = document.createElement("a");
+      subA.href = "#" + subEl.id;
+      subA.textContent = h3.textContent.trim();
+      subLi.appendChild(subA);
+      subOl.appendChild(subLi);
+    });
+    if (subOl.children.length) li.appendChild(subOl);
+    tocList.appendChild(li);
+  });
+
+  // --- Highlight the active TOC entry on scroll ---
+  var tocLinks = Array.prototype.slice.call(document.querySelectorAll(".toc a"));
+  var targets = tocLinks
+    .map(function (a) { return document.getElementById(a.getAttribute("href").slice(1)); })
+    .filter(Boolean);
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      var link = document.querySelector('.toc a[href="#' + entry.target.id + '"]');
+      if (!link) return;
+      if (entry.isIntersecting) {
+        tocLinks.forEach(function (l) { l.classList.remove("active"); });
+        link.classList.add("active");
+      }
+    });
+  }, { rootMargin: "-15% 0px -70% 0px" });
+  targets.forEach(function (t) { observer.observe(t); });
+}
+</script>
+
+<script>
+// Shared helpers for the figures, exposed as window.XP. Loaded before every fig-*.js.
+(function () {
+
+// Read a CSS custom property from :root, so every figure follows the site theme.
+function css(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+// Call fn now and again whenever the colour scheme flips.
+function onTheme(fn) {
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  mq.addEventListener('change', fn);
+}
+
+// Size a canvas's backing store to its CSS box times the device pixel ratio.
+// Drawing code then works in CSS pixels of the canvas's intrinsic width/height.
+function setupCanvas(canvas) {
+  // The logical size is remembered on first setup, because setting
+  // canvas.width below also rewrites the width attribute.
+  if (!canvas.dataset.w) {
+    canvas.dataset.w = canvas.getAttribute('width');
+    canvas.dataset.h = canvas.getAttribute('height');
+  }
+  const w = Number(canvas.dataset.w);
+  const h = Number(canvas.dataset.h);
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.aspectRatio = `${w} / ${h}`;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+
+// Pointer position in the canvas's own coordinate system.
+function canvasPoint(canvas, ev, w, h) {
+  const r = canvas.getBoundingClientRect();
+  return [((ev.clientX - r.left) / r.width) * w, ((ev.clientY - r.top) / r.height) * h];
+}
+
+function svgPoint(svg, ev) {
+  const p = svg.createSVGPoint();
+  p.x = ev.clientX;
+  p.y = ev.clientY;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  const n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+// Piecewise linear colour ramp through the given hex stops; t in [0, 1].
+function ramp(stops) {
+  const rgb = stops.map(hexToRgb);
+  const n = rgb.length - 1;
+  return (t) => {
+    const x = Math.min(Math.max(t, 0), 1) * n;
+    const i = Math.min(Math.floor(x), n - 1);
+    const f = x - i;
+    const a = rgb[i];
+    const b = rgb[i + 1];
+    return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+  };
+}
+
+// Paint a scalar field (rows of nx values, ny rows, row 0 at the top) into a
+// region of a canvas. The field is drawn small and scaled up with smoothing,
+// which gives a soft, continuous look at a fraction of the cost.
+function paintField(ctx, field, nx, ny, colour, x, y, w, h) {
+  const off = document.createElement('canvas');
+  off.width = nx;
+  off.height = ny;
+  const octx = off.getContext('2d');
+  const img = octx.createImageData(nx, ny);
+  for (let k = 0; k < nx * ny; k++) {
+    const c = colour(field[k]);
+    img.data[4 * k] = c[0];
+    img.data[4 * k + 1] = c[1];
+    img.data[4 * k + 2] = c[2];
+    img.data[4 * k + 3] = 255;
+  }
+  octx.putImageData(img, 0, 0);
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(off, x, y, w, h);
+  ctx.restore();
+}
+
+// Marching squares: line segments where the field crosses `level`.
+// Returns segments in grid coordinates (column, row).
+function contour(field, nx, ny, level) {
+  const segs = [];
+  const v = (i, j) => field[j * nx + i];
+  const lerp = (a, b) => (level - a) / (b - a);
+  for (let j = 0; j < ny - 1; j++) {
+    for (let i = 0; i < nx - 1; i++) {
+      const a = v(i, j), b = v(i + 1, j), c = v(i + 1, j + 1), d = v(i, j + 1);
+      const idx = (a > level ? 8 : 0) | (b > level ? 4 : 0) | (c > level ? 2 : 0) | (d > level ? 1 : 0);
+      if (idx === 0 || idx === 15) continue;
+      const top = [i + lerp(a, b), j];
+      const right = [i + 1, j + lerp(b, c)];
+      const bottom = [i + lerp(d, c), j + 1];
+      const left = [i, j + lerp(a, d)];
+      switch (idx) {
+        case 1: case 14: segs.push([left, bottom]); break;
+        case 2: case 13: segs.push([bottom, right]); break;
+        case 3: case 12: segs.push([left, right]); break;
+        case 4: case 11: segs.push([top, right]); break;
+        case 6: case 9: segs.push([top, bottom]); break;
+        case 7: case 8: segs.push([left, top]); break;
+        case 5: segs.push([left, top], [bottom, right]); break;
+        case 10: segs.push([top, right], [left, bottom]); break;
+      }
+    }
+  }
+  return segs;
+}
+
+// Small seeded generator, so "new problems" are reproducible within a session.
+function rng(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function arrowHead(ctx, x0, y0, x1, y1, size) {
+  const a = Math.atan2(y1 - y0, x1 - x0);
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x1 - size * Math.cos(a - 0.42), y1 - size * Math.sin(a - 0.42));
+  ctx.lineTo(x1 - size * Math.cos(a + 0.42), y1 - size * Math.sin(a + 0.42));
+  ctx.closePath();
+  ctx.fill();
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs = {}, parent) {
+  const node = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (parent) parent.appendChild(node);
+  return node;
+}
+
+  window.XP = { css, onTheme, setupCanvas, canvasPoint, svgPoint, hexToRgb, ramp, paintField, contour, rng, arrowHead, SVG_NS, el };
+})();
+</script>
+
+<script>
+// Shared drawing for the "network -> metanetwork -> network" diagrams
+// (Figures 1 and 2). Adds XP.mlpWeights and XP.mlpFigure.
+(function () {
+const { el, rng } = window.XP;
+
+const LAYERS = [2, 3, 2];
+const H = 250;
+const TOP = 40, BOTTOM = 190;
+const MID = (TOP + BOTTOM) / 2;
+const R = 9;
+
+// Node positions of the MLP with its layers spread over [x0, x1].
+function layout(x0, x1) {
+  const gap = (BOTTOM - TOP) / 2;
+  return LAYERS.map((n, l) => {
+    const x = x0 + ((x1 - x0) * l) / (LAYERS.length - 1);
+    const y0 = MID - ((n - 1) * gap) / 2;
+    return Array.from({ length: n }, (_, i) => [x, y0 + i * gap]);
+  });
+}
+
+function edgesOf(nodes) {
+  const out = [];
+  for (let l = 0; l + 1 < nodes.length; l++)
+    for (const a of nodes[l]) for (const b of nodes[l + 1]) out.push([a, b]);
+  return out;
+}
+
+const N_EDGES = LAYERS.slice(1).reduce((s, n, l) => s + n * LAYERS[l], 0);
+
+// One weight per edge, rounded to two decimals, from a fixed seed.
+function mlpWeights(seed) {
+  const r = rng(seed);
+  return Array.from({ length: N_EDGES }, () => {
+    const u = 1 - r(), v = r();
+    const w = 0.6 * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    return Math.round(Math.max(-1.2, Math.min(1.2, w)) * 100) / 100;
+  });
+}
+
+// A text label built from [text, className] runs, so symbols can be styled.
+function label(svg, x, y, runs, cls) {
+  const t = el('text', { x, y, class: cls, 'text-anchor': 'middle' }, svg);
+  for (const [text, runCls] of runs) {
+    const s = el('tspan', runCls ? { class: runCls } : {}, t);
+    s.textContent = text;
+  }
+}
+
+function arrow(svg, x0, x1, y) {
+  el('line', { x1: x0, y1: y, x2: x1 - 8, y2: y, style: 'stroke: var(--ink-soft); stroke-width: 1.8px' }, svg);
+  el('path', { d: `M ${x1} ${y} L ${x1 - 10} ${y - 5.5} L ${x1 - 10} ${y + 5.5} Z`, style: 'fill: var(--ink-soft)' }, svg);
+}
+
+// Draw one network. Without weights the edges are dashed placeholders; with
+// weights they are colored by sign, sized by magnitude and labeled.
+function drawNet(svg, x0, x1, weights) {
+  const nodes = layout(x0, x1);
+  const edges = edgesOf(nodes);
+  const g = el('g', {}, svg);
+  edges.forEach(([a, b], k) => {
+    const w = weights ? weights[k] : null;
+    const style = w === null
+      ? 'stroke: var(--ink-soft); stroke-width: 1px; stroke-dasharray: 3 4; stroke-opacity: 0.7'
+      : `stroke: var(${w >= 0 ? '--c-meta' : '--warm'}); stroke-width: ${(0.8 + 2.4 * Math.abs(w)).toFixed(2)}px; stroke-opacity: 0.85`;
+    el('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], style, 'stroke-linecap': 'round' }, g);
+  });
+  for (const layer of nodes)
+    for (const [x, y] of layer)
+      el('circle', { cx: x, cy: y, r: R, style: 'fill: var(--eq-bg); stroke: var(--ink); stroke-width: 1.5px' }, g);
+  if (!weights) return;
+
+  // Value labels lie along their own edge. Each slides along its edge to the
+  // first spot that clears the labels already placed; a small backing in the
+  // panel color keeps the line from running through the digits.
+  const placed = [];
+  edges.forEach(([a, b], k) => {
+    let x, y;
+    for (const t of [0.34, 0.46, 0.24, 0.58, 0.7]) {
+      x = a[0] + (b[0] - a[0]) * t;
+      y = a[1] + (b[1] - a[1]) * t;
+      if (placed.every(([px, py]) => Math.hypot(px - x, py - y) > 30)) break;
+    }
+    placed.push([x, y]);
+    const angle = (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI;
+    const lg = el('g', { transform: `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${angle.toFixed(1)})` }, g);
+    el('rect', { x: -15, y: -7.5, width: 30, height: 15, rx: 3, style: 'fill: var(--eq-bg)' }, lg);
+    const t = el('text', { x: 0, y: 3.8, class: 'fp-weight', 'text-anchor': 'middle' }, lg);
+    const w = weights[k];
+    t.textContent = (w < 0 ? '−' : '') + Math.abs(w).toFixed(2);
+  });
+}
+
+// The full diagram: input network, metanetwork box, output network.
+// opts: { inWeights (array or null), outWeights, inLabel, outLabel, boxMath }
+function mlpFigure(svg, opts) {
+  // Both networks get the same width, so they read as the same architecture.
+  drawNet(svg, 20, 248, opts.inWeights);
+  label(svg, 134, H - 14, opts.inLabel, 'fp-label');
+
+  arrow(svg, 262, 304, MID);
+  el('rect', { x: 310, y: MID - 44, width: 136, height: 88, rx: 10, style: 'fill: var(--paper-raise); stroke: var(--ink); stroke-width: 1.5px' }, svg);
+  label(svg, 378, MID - 6, [['metanetwork']], 'fp-box');
+  label(svg, 378, MID + 22, opts.boxMath, 'fp-math');
+  arrow(svg, 452, 494, MID);
+
+  drawNet(svg, 512, 740, opts.outWeights);
+  label(svg, 626, H - 14, opts.outLabel, 'fp-label');
+}
+
+Object.assign(window.XP, { mlpWeights, mlpFigure });
+})();
+</script>
+
+<script>
+// Figure 1 (static): weight prediction. An architecture G without weights goes
+// into a metanetwork, which returns weights theta for it: G-space -> Theta.
+(function () {
+const { mlpWeights, mlpFigure } = window.XP;
+
+const svg = document.querySelector('#fig-predict svg');
+if (!svg) return;
+
+mlpFigure(svg, {
+  inWeights: null,
+  outWeights: mlpWeights(11),
+  inLabel: [['architecture '], ['G', 'sym']],
+  outLabel: [['initialized weights '], ['θ', 'sym-bold']],
+  boxMath: [['𝒢', 'sym'], [' → '], ['Θ', 'sym-up']],
+});
+})();
+</script>
+
+<script>
+// Figure 2 (static): what the paper does. Existing weights theta go into the
+// metanetwork together with the architecture, and improved weights theta'
+// come out: G-space x Theta -> Theta.
+(function () {
+const { mlpWeights, mlpFigure, rng } = window.XP;
+
+const svg = document.querySelector('#fig-amortize svg');
+if (!svg) return;
+
+// Start from the weights of Figure 1, then shift each by a small fixed amount.
+const before = mlpWeights(11);
+const r = rng(5);
+const after = before.map((w) => Math.round(Math.max(-1.2, Math.min(1.2, w + (r() - 0.5) * 0.6)) * 100) / 100);
+
+mlpFigure(svg, {
+  inWeights: before,
+  outWeights: after,
+  inLabel: [['existing weights '], ['θ', 'sym-bold']],
+  outLabel: [['improved weights '], ['θ', 'sym-bold'], ['′']],
+  boxMath: [['𝒢', 'sym'], [' × '], ['Θ', 'sym-up'], [' → '], ['Θ', 'sym-up']],
+});
+})();
+</script>
+
+<script>
+// Shared pieces for the interactive network figures (Figures 3 and 4): the
+// 2-3-2 network with the weights of Figure 1, its drawing, the weight
+// matrices as stored, and a forward pass to check the function. Adds XP.play.
+(function () {
+const { el, mlpWeights } = window.XP;
+
+const SUB = ['₁', '₂', '₃'];
+
+// Same weights as Figures 1 and 2. Edge k runs layer by layer, source-major.
+const w = mlpWeights(11);
+const W1 = [0, 1, 2].map((h) => [w[0 * 3 + h], w[1 * 3 + h]]); // W1[hidden][input]
+const W2 = [0, 1].map((o) => [0, 1, 2].map((h) => w[6 + h * 2 + o])); // W2[output][hidden]
+
+const GEO = {
+  XI: 36, XH: 246, XO: 456, R: 9, RH: 15,
+  SLOT: [70, 150, 230],
+  IN_Y: [110, 190],
+  OUT_Y: [110, 190],
+};
+
+const fmt = (v) => (v < 0 ? '−' : '') + Math.abs(v).toFixed(2);
+
+const edgeStyle = (v, hi) =>
+  `stroke: var(${v >= 0 ? '--c-meta' : '--warm'}); stroke-width: ${(0.8 + 2.4 * Math.min(Math.abs(v), 2.5)).toFixed(2)}px; stroke-opacity: ${hi ? 1 : 0.85}`;
+
+// Value labels lie along their own edge, on a small backing in the panel color
+// that keeps the line from running through the digits. An edge may carry its
+// own label, { text, hi } (e.g. "−0.69 q₂"); the backing grows to fit.
+//
+// Placement: each label is treated as a bar along its edge. It tries positions
+// along the edge, clear of the nodes at both ends, and takes the one with the
+// widest gap to the bars already placed (ties go to the spot nearest t = 0.35).
+function segDist(p1, p2, q1, q2) {
+  const d = (p, a, b) => {
+    const abx = b[0] - a[0], aby = b[1] - a[1];
+    const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * abx + (p[1] - a[1]) * aby) / (abx * abx + aby * aby || 1)));
+    return Math.hypot(p[0] - a[0] - t * abx, p[1] - a[1] - t * aby);
+  };
+  const cross = (a, b, c) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+  const intersect = cross(p1, p2, q1) * cross(p1, p2, q2) < 0 && cross(q1, q2, p1) * cross(q1, q2, p2) < 0;
+  return intersect ? 0 : Math.min(d(p1, q1, q2), d(p2, q1, q2), d(q1, p1, p2), d(q2, p1, p2));
+}
+
+function placeLabels(g, edges) {
+  const placed = []; // bars: [end1, end2]
+  // Long labels claim their spots first; the short ones then move out of their way.
+  const order = edges.slice().sort((e, f) => (f.label ? 1 : 0) - (e.label ? 1 : 0));
+  for (const { a, b, v, label } of order) {
+    const s = label ? label.text : fmt(v);
+    const half = Math.max(16, s.length * 3.1 + 4);
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const ux = (b[0] - a[0]) / len, uy = (b[1] - a[1]) / len;
+    let best = null;
+    for (let t = 0.12; t <= 0.88; t += 0.02) {
+      if (t * len < half + 16 || (1 - t) * len < half + 16) continue; // keep clear of the nodes
+      const x = a[0] + (b[0] - a[0]) * t, y = a[1] + (b[1] - a[1]) * t;
+      const bar = [[x - ux * half, y - uy * half], [x + ux * half, y + uy * half]];
+      const gap = Math.min(40, ...placed.map(([p, q]) => segDist(bar[0], bar[1], p, q)));
+      const score = gap - Math.abs(t - 0.35) * 4;
+      if (!best || score > best.score) best = { score, x, y, bar };
+    }
+    if (!best) {
+      const x = (a[0] + b[0]) / 2, y = (a[1] + b[1]) / 2;
+      best = { x, y, bar: [[x - ux * half, y - uy * half], [x + ux * half, y + uy * half]] };
+    }
+    const { x, y } = best;
+    placed.push(best.bar);
+    const angle = (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI;
+    const lg = el('g', { transform: `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${angle.toFixed(1)})` }, g);
+    el('rect', { x: -half, y: -7.5, width: 2 * half, height: 15, rx: 3, style: 'fill: var(--eq-bg)' }, lg);
+    const t = el('text', { x: 0, y: 3.8, class: 'fp-weight' + (label && label.hi ? ' is-scaled' : ''), 'text-anchor': 'middle' }, lg);
+    t.textContent = s;
+  }
+}
+
+// The network. opts: { nodeY[id], w1(id, i), w2(o, id), active, badge(id) -> text|null,
+// label1(id, i) / label2(o, id) -> optional edge label { text, hi },
+// hidden(g, id) -> called for each hidden node group to add attributes and listeners }.
+function drawNet(svg, opts) {
+  const { XI, XH, XO, R, RH, IN_Y, OUT_Y } = GEO;
+  const { nodeY, w1, w2, active } = opts;
+  const g = el('g', {}, svg);
+  const edges = [];
+  for (let id = 0; id < 3; id++) {
+    IN_Y.forEach((iy, i) => edges.push({ a: [XI, iy], b: [XH, nodeY[id]], v: w1(id, i), id, label: opts.label1 && opts.label1(id, i) }));
+    OUT_Y.forEach((oy, o) => edges.push({ a: [XH, nodeY[id]], b: [XO, oy], v: w2(o, id), id, label: opts.label2 && opts.label2(o, id) }));
+  }
+  for (const e of edges) {
+    el('line', { x1: e.a[0], y1: e.a[1], x2: e.b[0], y2: e.b[1], style: edgeStyle(e.v, e.id === active), 'stroke-linecap': 'round' }, g);
+  }
+  for (const y of IN_Y) el('circle', { cx: XI, cy: y, r: R, class: 'pm-node' }, g);
+  for (const y of OUT_Y) el('circle', { cx: XO, cy: y, r: R, class: 'pm-node' }, g);
+  // Edges of the active neuron are placed last, so their labels sit on top.
+  placeLabels(g, edges.slice().sort((a, b) => (a.id === active) - (b.id === active)));
+
+  // The active neuron is drawn last, so it passes over the others when dragged.
+  for (const id of [0, 1, 2].sort((a, b) => (a === active) - (b === active))) {
+    const hg = el('g', { 'data-id': id, class: 'pm-hidden' + (id === active ? ' is-active' : ''), tabindex: 0, role: 'button' }, g);
+    el('circle', { cx: XH, cy: nodeY[id], r: RH, class: 'pm-node hid' }, hg);
+    const t = el('text', { x: XH, y: nodeY[id] + 5, class: 'pm-name', 'text-anchor': 'middle' }, hg);
+    t.textContent = `h${SUB[id]}`;
+    const badge = opts.badge && opts.badge(id);
+    if (badge) {
+      const b = el('text', { x: XH, y: nodeY[id] - RH - 7, class: 'pm-badge', 'text-anchor': 'middle' }, hg);
+      b.textContent = badge;
+    }
+    if (opts.hidden) opts.hidden(hg, id);
+  }
+}
+
+// The weight matrices as stored. opts: { rows: neuron ids in storage order,
+// w1(id, i), w2(o, id), active }.
+function drawMatrices(svg, opts) {
+  const { rows, w1, w2, active } = opts;
+  const g = el('g', {}, svg);
+  const CW = 42, CH = 26;
+  const cell = (x, y, v, id) => {
+    el('rect', {
+      x, y, width: CW - 3, height: CH - 3, rx: 3,
+      class: 'pm-cell' + (id === active ? ' is-active' : ''),
+      style: `fill: var(${v >= 0 ? '--c-meta' : '--warm'}); fill-opacity: ${(0.12 + 0.3 * Math.min(Math.abs(v), 1.5)).toFixed(2)}`,
+    }, g);
+    const t = el('text', { x: x + (CW - 3) / 2, y: y + 16.5, class: 'fp-weight', 'text-anchor': 'middle' }, g);
+    t.textContent = fmt(v);
+  };
+  const text = (x, y, s, cls, anchor = 'middle') => {
+    const t = el('text', { x, y, class: cls, 'text-anchor': anchor }, g);
+    t.textContent = s;
+  };
+
+  // W1: one row per hidden neuron, one column per input.
+  const x1 = 528, y1 = 60;
+  text(x1 + CW, y1 - 16, 'W₁', 'pm-mat');
+  rows.forEach((id, r) => {
+    text(x1 - 8, y1 + r * CH + 17, `h${SUB[id]}`, 'pm-rowlabel' + (id === active ? ' is-active' : ''), 'end');
+    [0, 1].forEach((i) => cell(x1 + i * CW, y1 + r * CH, w1(id, i), id));
+  });
+
+  // W2: one column per hidden neuron, one row per output.
+  const x2 = 626, y2 = 60;
+  text(x2 + 1.5 * CW, y2 - 16, 'W₂', 'pm-mat');
+  rows.forEach((id, c) => {
+    text(x2 + c * CW + (CW - 3) / 2, y2 + 2 * CH + 16, `h${SUB[id]}`, 'pm-rowlabel' + (id === active ? ' is-active' : ''));
+    [0, 1].forEach((o) => cell(x2 + c * CW, y2 + o * CH, w2(o, id), id));
+  });
+}
+
+const ACT = { relu: (z) => Math.max(0, z), tanh: Math.tanh };
+
+// Largest output difference between two networks over a grid in [-2, 2]^2.
+// Each network is { w1(id, i), w2(o, id), act }.
+function maxDiff(n1, n2) {
+  const out = (n, x) => {
+    const h = [0, 1, 2].map((id) => ACT[n.act](n.w1(id, 0) * x[0] + n.w1(id, 1) * x[1]));
+    return [0, 1].map((o) => h.reduce((s, v, id) => s + n.w2(o, id) * v, 0));
+  };
+  let worst = 0;
+  for (let i = -10; i <= 10; i++) {
+    for (let j = -10; j <= 10; j++) {
+      const a = out(n1, [i / 5, j / 5]), b = out(n2, [i / 5, j / 5]);
+      worst = Math.max(worst, Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]));
+    }
+  }
+  return worst;
+}
+
+
+window.XP.play = { SUB, W1, W2, GEO, fmt, drawNet, drawMatrices, maxDiff };
+})();
+</script>
+
+<script>
+// Figure 3 (interactive): permutation symmetry. Drag the hidden neurons of the
+// 2-3-2 ReLU network into a new order; their weights travel with them. The
+// weight matrices the metanetwork would read change, the function does not.
+(function () {
+const { svgPoint } = window.XP;
+const { SUB, W1, W2, GEO, drawNet, drawMatrices, maxDiff } = window.XP.play;
+
+const root = document.getElementById('fig-permute');
+if (!root) return;
+const svg = root.querySelector('svg');
+const q = (role) => root.querySelector(`[data-role="${role}"]`);
+const { XH, RH, SLOT } = GEO;
+
+let order = [0, 1, 2]; // order[slot] = neuron id
+const nodeY = [0, 1, 2].map((id) => SLOT[order.indexOf(id)]);
+let active = -1; // neuron being dragged or hovered
+let drag = null;
+
+const w1 = (id, i) => W1[id][i];
+const w2 = (o, id) => W2[o][id];
+// The weights as stored, slot by slot: this is what changes under a permutation.
+const flat = (ord) => [...ord.flatMap((id) => W1[id]), ...[0, 1].flatMap((o) => ord.map((id) => W2[o][id]))];
+
+function redraw() {
+  svg.replaceChildren();
+  drawNet(svg, {
+    nodeY, w1, w2, active,
+    hidden(hg, id) {
+      hg.setAttribute('aria-label', `hidden neuron ${id + 1}, slot ${order.indexOf(id) + 1}; drag or use the arrow keys to move it`);
+      hg.addEventListener('pointerdown', (ev) => startDrag(ev, id));
+      hg.addEventListener('keydown', (ev) => keyMove(ev, id));
+    },
+  });
+  // Rows follow the live node positions, so the matrices reorder while dragging.
+  drawMatrices(svg, { rows: [0, 1, 2].sort((a, b) => nodeY[a] - nodeY[b]), w1, w2, active });
+
+  const base = flat([0, 1, 2]), cur = flat(order);
+  q('dtheta').textContent = Math.hypot(...cur.map((v, i) => v - base[i])).toFixed(2);
+  // Summing over hidden neurons does not depend on their order, so this holds by construction.
+  const same = maxDiff({ w1, w2, act: 'relu' }, { w1, w2, act: 'relu' }) < 1e-9;
+  const status = q('status');
+  status.textContent = same ? '✓ same function' : '✕ different function';
+  status.className = 'status ' + (same ? 'ok' : 'bad');
+  q('order').textContent = order.map((id) => `h${SUB[id]}`).join(', ');
+}
+
+// ---- interaction ----
+function startDrag(ev, id) {
+  ev.preventDefault();
+  drag = { id, dy: svgPoint(svg, ev).y - nodeY[id] };
+  active = id;
+  svg.setPointerCapture(ev.pointerId);
+  redraw();
+}
+// Hover is hit-tested on coordinates: the nodes are redrawn on every change,
+// so enter/leave events on them would not be reliable.
+function setActive(id) {
+  if (id === active) return;
+  active = id;
+  redraw();
+}
+svg.addEventListener('pointerleave', () => { if (!drag) setActive(-1); });
+svg.addEventListener('pointermove', (ev) => {
+  const p = svgPoint(svg, ev);
+  if (!drag) {
+    const hit = [0, 1, 2].find((id) => Math.hypot(p.x - XH, p.y - nodeY[id]) <= RH + 3);
+    setActive(hit === undefined ? -1 : hit);
+    return;
+  }
+  nodeY[drag.id] = Math.max(SLOT[0] - 20, Math.min(SLOT[2] + 20, p.y - drag.dy));
+  redraw();
+});
+const endDrag = () => {
+  if (!drag) return;
+  drag = null;
+  order = [0, 1, 2].sort((a, b) => nodeY[a] - nodeY[b]);
+  settle();
+};
+svg.addEventListener('pointerup', endDrag);
+svg.addEventListener('pointercancel', endDrag);
+
+function keyMove(ev, id) {
+  if (ev.key !== 'ArrowUp' && ev.key !== 'ArrowDown') return;
+  ev.preventDefault();
+  const s = order.indexOf(id), t = s + (ev.key === 'ArrowUp' ? -1 : 1);
+  if (t < 0 || t > 2) return;
+  [order[s], order[t]] = [order[t], order[s]];
+  active = id;
+  settle(() => svg.querySelector(`.pm-hidden[data-id="${id}"]`).focus());
+}
+
+// Ease every hidden neuron into its slot.
+function settle(done) {
+  const from = nodeY.slice();
+  const to = [0, 1, 2].map((id) => SLOT[order.indexOf(id)]);
+  const dur = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 280;
+  const t0 = performance.now();
+  const step = (now) => {
+    const t = dur ? Math.min((now - t0) / dur, 1) : 1;
+    const e = 1 - Math.pow(1 - t, 3);
+    for (let id = 0; id < 3; id++) nodeY[id] = from[id] + (to[id] - from[id]) * e;
+    redraw();
+    if (t < 1) requestAnimationFrame(step);
+    else if (done) done();
+  };
+  requestAnimationFrame(step);
+}
+
+q('shuffle').addEventListener('click', () => {
+  const o = order.slice();
+  do {
+    for (let i = 2; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [o[i], o[j]] = [o[j], o[i]];
+    }
+  } while (o.every((v, i) => v === order[i]));
+  order = o;
+  active = -1;
+  settle();
+});
+q('reset').addEventListener('click', () => {
+  order = [0, 1, 2];
+  active = -1;
+  settle();
+});
+
+redraw();
+})();
+</script>
+
+<script>
+// Figure 4 (interactive): scaling symmetry. Pick a hidden neuron and a factor q:
+// its incoming weights are multiplied by q and, if compensation is on, its
+// outgoing weights divided by q. Under ReLU any q > 0 keeps the function;
+// under tanh only q = ±1 does.
+(function () {
+const { svgPoint } = window.XP;
+const { SUB, W1, W2, GEO, fmt, drawNet, drawMatrices, maxDiff } = window.XP.play;
+
+const root = document.getElementById('fig-scale');
+if (!root) return;
+const svg = root.querySelector('svg');
+const q = (role) => root.querySelector(`[data-role="${role}"]`);
+const { XH, RH, SLOT } = GEO;
+
+const state = { act: 'relu', compensate: true, scale: [1, 1, 1], selected: 0 };
+
+const w1 = (id, i) => state.scale[id] * W1[id][i];
+const w2 = (o, id) => (state.compensate ? W2[o][id] / state.scale[id] : W2[o][id]);
+const flat = (f1, f2) => [...[0, 1, 2].flatMap((id) => [f1(id, 0), f1(id, 1)]), ...[0, 1].flatMap((o) => [0, 1, 2].map((id) => f2(o, id)))];
+
+const fmtQ = (v) => (v < 0 ? '−' : '') + Math.abs(v).toFixed(2);
+const scaled = (id) => Math.abs(state.scale[id] - 1) > 1e-9;
+
+function redraw() {
+  svg.replaceChildren();
+  drawNet(svg, {
+    nodeY: SLOT, w1, w2, active: state.selected,
+    // Every neuron shows its factor, and its edges show how their weights are made,
+    // also at q = 1. Scaled ones are highlighted.
+    badge: (id) => `q${SUB[id]} = ${fmtQ(state.scale[id])}`,
+    label1: (id, i) => ({ text: `${fmt(W1[id][i])} q${SUB[id]}`, hi: scaled(id) }),
+    label2: (o, id) => (state.compensate ? { text: `${fmt(W2[o][id])}/q${SUB[id]}`, hi: scaled(id) } : null),
+    hidden(hg, id) {
+      hg.setAttribute('aria-label', `hidden neuron ${id + 1}, scaled by ${fmtQ(state.scale[id])}; press Enter to select`);
+      hg.setAttribute('aria-pressed', String(id === state.selected));
+      hg.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          select(id);
+          svg.querySelector(`.pm-hidden[data-id="${id}"]`).focus();
+        }
+      });
+    },
+  });
+  drawMatrices(svg, { rows: [0, 1, 2], w1, w2, active: state.selected });
+
+  const base = flat((id, i) => W1[id][i], (o, id) => W2[o][id]);
+  const cur = flat(w1, w2);
+  q('dtheta').textContent = Math.hypot(...cur.map((v, i) => v - base[i])).toFixed(2);
+  const d = maxDiff({ w1: (id, i) => W1[id][i], w2: (o, id) => W2[o][id], act: state.act }, { w1, w2, act: state.act });
+  const same = d < 1e-9;
+  const status = q('status');
+  status.textContent = same ? '✓ same function' : '✕ different function';
+  status.className = 'status ' + (same ? 'ok' : 'bad');
+}
+
+// ---- controls ----
+const slider = q('q');
+function select(id) {
+  state.selected = id;
+  q('sel').textContent = `h${SUB[id]}`;
+  q('q-name').textContent = `q${SUB[id]}`;
+  slider.value = String(state.scale[id]);
+  q('q-val').textContent = fmtQ(state.scale[id]);
+  redraw();
+}
+
+slider.addEventListener('input', () => {
+  let v = Number(slider.value);
+  if (Math.abs(Math.abs(v) - 1) < 0.05) v = Math.sign(v); // snap to q = ±1
+  if (Math.abs(v) < 0.1) v = 0.1 * (Math.sign(v) || 1); // q = 0 cannot be undone
+  state.scale[state.selected] = v;
+  q('q-val').textContent = fmtQ(v);
+  redraw();
+});
+
+q('compensate').addEventListener('change', (ev) => {
+  state.compensate = ev.target.checked;
+  redraw();
+});
+
+root.querySelectorAll('[data-act]').forEach((b) =>
+  b.addEventListener('click', () => {
+    state.act = b.dataset.act;
+    root.querySelectorAll('[data-act]').forEach((o) => o.setAttribute('aria-checked', String(o === b)));
+    redraw();
+  }),
+);
+
+q('reset').addEventListener('click', () => {
+  state.scale = [1, 1, 1];
+  state.compensate = true;
+  q('compensate').checked = true;
+  select(state.selected);
+});
+
+// Clicking near a hidden neuron selects it (the nodes are redrawn often).
+svg.addEventListener('pointerdown', (ev) => {
+  const p = svgPoint(svg, ev);
+  const hit = [0, 1, 2].find((id) => Math.hypot(p.x - XH, p.y - SLOT[id]) <= RH + 4);
+  if (hit !== undefined && hit !== state.selected) select(hit);
+});
+
+select(0);
+})();
+</script>
+
+<script>
+// Figure 5 (interactive): symmetries of a tiny CNN. A 3x3 input, a first layer
+// of 3 channels with 2x2 kernels (ReLU, 2x2 feature maps), and a second layer
+// whose 2x2-per-channel kernel gives one output. Channels play the role of
+// neurons: they can be reordered, and each can be scaled as a whole.
+(function () {
+const { el, rng, svgPoint } = window.XP;
+
+const root = document.getElementById('fig-cnn');
+if (!root) return;
+const svg = root.querySelector('svg');
+const q = (role) => root.querySelector(`[data-role="${role}"]`);
+const SUB = ['₁', '₂', '₃'];
+
+// ---- weights: K1[c] is channel c's 2x2 kernel, K2[c] its slice of the next kernel ----
+const r = rng(23);
+const draw = () => Math.round((r() * 2 - 1) * 100) / 100;
+const K1 = [0, 1, 2].map(() => [draw(), draw(), draw(), draw()]);
+const K2 = [0, 1, 2].map(() => [draw(), draw(), draw(), draw()]);
+
+// scale[c]: factor on channel c. Its kernel is multiplied by it, its slice of
+// the next kernel divided by it.
+const state = { order: [0, 1, 2], scale: [1, 1, 1], selected: 0 };
+
+// ---- forward pass ----
+// Position p = (i, j) of the 2x2 feature map sees the input patch starting at (i, j).
+const patch = (x, p) => {
+  const i = p >> 1, j = p & 1;
+  return [x[i * 3 + j], x[i * 3 + j + 1], x[(i + 1) * 3 + j], x[(i + 1) * 3 + j + 1]];
+};
+function forward(x, scale) {
+  let out = 0;
+  for (let c = 0; c < 3; c++) {
+    for (let p = 0; p < 4; p++) {
+      const z = patch(x, p).reduce((acc, v, k) => acc + scale[c] * K1[c][k] * v, 0);
+      out += (K2[c][p] / scale[c]) * Math.max(0, z);
+    }
+  }
+  return out;
+}
+const rx = rng(7);
+const INPUTS = Array.from({ length: 200 }, () => Array.from({ length: 9 }, () => rx() * 2 - 1));
+const sameFunction = () => INPUTS.every((x) => Math.abs(forward(x, [1, 1, 1]) - forward(x, state.scale)) < 1e-9);
+
+// ---- geometry ----
+const SLOT = [72, 186, 300];
+const cardY = [0, 1, 2].map((c) => SLOT[state.order.indexOf(c)]);
+const IMG = { x: 26, cell: 22 }, CARD = { x: 160, w: 300, h: 104 }, K2X = 530, K2C = 37, OUT = [712, 186];
+
+const fmt = (v) => (v < 0 ? '−' : '') + Math.abs(v).toFixed(2);
+const fill = (v) => `fill: var(${v >= 0 ? '--c-meta' : '--warm'}); fill-opacity: ${(0.12 + 0.3 * Math.min(Math.abs(v), 1.5)).toFixed(2)}`;
+const text = (g, x, y, s, cls, anchor = 'middle') => {
+  const t = el('text', { x, y, class: cls, 'text-anchor': anchor }, g);
+  t.textContent = s;
+  return t;
+};
+
+// A 2x2 grid of values.
+function grid(g, x, y, cell, values) {
+  values.forEach((v, k) => {
+    const cx = x + (k & 1) * cell, cy = y + (k >> 1) * cell;
+    el('rect', { x: cx, y: cy, width: cell - 3, height: cell - 3, rx: 3, style: fill(v), class: 'pm-cell' }, g);
+    text(g, cx + (cell - 3) / 2, cy + (cell - 3) / 2 + 4, fmt(v), 'fp-weight');
+  });
+}
+
+function redraw() {
+  svg.replaceChildren();
+  const g = el('g', {}, svg);
+  const active = state.selected;
+
+  // Input image.
+  const iy = SLOT[1] - 1.5 * IMG.cell;
+  for (let k = 0; k < 9; k++) {
+    el('rect', { x: IMG.x + (k % 3) * IMG.cell, y: iy + Math.floor(k / 3) * IMG.cell, width: IMG.cell - 3, height: IMG.cell - 3, rx: 2, class: 'cn-input' }, g);
+  }
+  text(g, IMG.x + 1.5 * IMG.cell, iy + 3 * IMG.cell + 18, 'input', 'cn-label');
+  text(g, CARD.x + CARD.w / 2, 11, 'layer 1: one 2 × 2 kernel per channel', 'cn-label');
+  text(g, K2X + K2C, 11, 'layer 2 kernel', 'cn-label');
+
+  // Connections; the active channel is drawn last.
+  const ids = [0, 1, 2].sort((a, b) => (a === active) - (b === active));
+  for (const c of ids) {
+    const y = cardY[c];
+    const hi = c === active ? ' is-active' : '';
+    el('line', { x1: IMG.x + 3 * IMG.cell, y1: SLOT[1], x2: CARD.x, y2: y, class: 'cn-wire' + hi }, g);
+    el('line', { x1: CARD.x + CARD.w, y1: y, x2: K2X - 8, y2: y, class: 'cn-wire' + hi }, g);
+    el('line', { x1: K2X + 2 * K2C - 3, y1: y, x2: OUT[0] - 10, y2: OUT[1], class: 'cn-wire' + hi }, g);
+  }
+  el('circle', { cx: OUT[0], cy: OUT[1], r: 10, class: 'pm-node' }, g);
+  text(g, OUT[0], OUT[1] + 30, 'output', 'cn-label');
+
+  for (const c of ids) drawChannel(g, c);
+
+  q('order').textContent = state.order.map((c) => `c${SUB[c]}`).join(', ');
+  const same = sameFunction();
+  const st = q('status');
+  st.textContent = same ? '✓ same function' : '✕ different function';
+  st.className = 'status ' + (same ? 'ok' : 'bad');
+}
+
+function drawChannel(g, c) {
+  const y = cardY[c], top = y - CARD.h / 2;
+  const s = state.scale[c];
+  const cg = el('g', { class: 'cn-card' + (c === state.selected ? ' is-active' : ''), 'data-id': c, tabindex: 0, role: 'button' }, g);
+  cg.setAttribute('aria-label', `channel ${c + 1}, scaled by ${s.toFixed(2)}; drag or use the arrow keys to move it`);
+  el('rect', { x: CARD.x, y: top, width: CARD.w, height: CARD.h, rx: 8, class: 'cn-card-bg' }, cg);
+  text(cg, CARD.x + 16, y + 5, `c${SUB[c]}`, 'pm-name');
+
+  // The kernel keeps its original values; its label carries the factor, also at
+  // q = 1. A scaled channel is highlighted.
+  const scaled = Math.abs(s - 1) > 1e-9;
+  const cls = scaled ? 'cn-sub is-scaled' : 'cn-sub';
+  grid(cg, CARD.x + 42, y - 40, 37, K1[c]);
+  text(cg, CARD.x + 78, top + CARD.h - 8, `kernel q${SUB[c]}`, cls);
+
+  text(cg, CARD.x + 152, y + 4, 'ReLU →', 'cn-sub');
+  const fx = CARD.x + 196, fy = y - 31, fc = 30;
+  for (let k = 0; k < 4; k++) {
+    el('rect', { x: fx + (k & 1) * fc, y: fy + (k >> 1) * fc, width: fc - 3, height: fc - 3, rx: 3, class: 'cn-fmap' }, cg);
+  }
+  text(cg, fx + fc, top + CARD.h - 8, 'feature map', 'cn-sub');
+
+  text(cg, CARD.x + CARD.w - 12, top + 16, `q${SUB[c]} = ${s.toFixed(2)}`, scaled ? 'pm-badge' : 'pm-badge is-idle', 'end');
+
+  // This channel's slice of the layer-2 kernel, divided by the same factor.
+  grid(g, K2X, y - K2C, K2C, K2[c]);
+  text(g, K2X + K2C, y + K2C + 14, `slice/q${SUB[c]}`, cls);
+}
+
+// ---- interaction ----
+const slider = q('q');
+function select(c) {
+  state.selected = c;
+  slider.value = String(state.scale[c]);
+  q('q-val').textContent = state.scale[c].toFixed(2);
+  q('sel').textContent = `c${SUB[c]}`;
+  q('q-name').textContent = `q${SUB[c]}`;
+  redraw();
+}
+
+slider.addEventListener('input', () => {
+  let v = Number(slider.value);
+  if (Math.abs(v - 1) < 0.05) v = 1;
+  state.scale[state.selected] = v;
+  q('q-val').textContent = v.toFixed(2);
+  redraw();
+});
+
+// Pointer: a press on a card selects it; moving while pressed drags it.
+let drag = null;
+svg.addEventListener('pointerdown', (ev) => {
+  const p = svgPoint(svg, ev);
+  const c = [0, 1, 2].find((id) => p.x >= CARD.x && p.x <= CARD.x + CARD.w && Math.abs(p.y - cardY[id]) <= CARD.h / 2);
+  if (c === undefined) return;
+  ev.preventDefault();
+  drag = { c, dy: p.y - cardY[c], y0: p.y, moved: false };
+  svg.setPointerCapture(ev.pointerId);
+  select(c);
+});
+svg.addEventListener('pointermove', (ev) => {
+  if (!drag) return;
+  const y = svgPoint(svg, ev).y;
+  if (Math.abs(y - drag.y0) > 4) drag.moved = true;
+  if (!drag.moved) return;
+  cardY[drag.c] = Math.max(SLOT[0] - 24, Math.min(SLOT[2] + 24, y - drag.dy));
+  redraw();
+});
+const endDrag = () => {
+  if (!drag) return;
+  const moved = drag.moved;
+  drag = null;
+  if (moved) {
+    state.order = [0, 1, 2].sort((a, b) => cardY[a] - cardY[b]);
+    settle();
+  }
+};
+svg.addEventListener('pointerup', endDrag);
+svg.addEventListener('pointercancel', endDrag);
+
+svg.addEventListener('keydown', (ev) => {
+  const c = Number(ev.target.getAttribute && ev.target.getAttribute('data-id'));
+  if (Number.isNaN(c) || (ev.key !== 'ArrowUp' && ev.key !== 'ArrowDown')) return;
+  ev.preventDefault();
+  const s = state.order.indexOf(c), t = s + (ev.key === 'ArrowUp' ? -1 : 1);
+  if (t < 0 || t > 2) return;
+  [state.order[s], state.order[t]] = [state.order[t], state.order[s]];
+  state.selected = c;
+  settle(() => svg.querySelector(`.cn-card[data-id="${c}"]`).focus());
+});
+
+// Ease every card into its slot.
+function settle(done) {
+  const from = cardY.slice();
+  const to = [0, 1, 2].map((c) => SLOT[state.order.indexOf(c)]);
+  const dur = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 280;
+  const t0 = performance.now();
+  const step = (now) => {
+    const t = dur ? Math.min((now - t0) / dur, 1) : 1;
+    const e = 1 - Math.pow(1 - t, 3);
+    for (let c = 0; c < 3; c++) cardY[c] = from[c] + (to[c] - from[c]) * e;
+    redraw();
+    if (t < 1) requestAnimationFrame(step);
+    else if (done) done();
+  };
+  requestAnimationFrame(step);
+}
+
+q('shuffle').addEventListener('click', () => {
+  const o = state.order.slice();
+  do {
+    for (let i = 2; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [o[i], o[j]] = [o[j], o[i]];
+    }
+  } while (o.every((v, i) => v === state.order[i]));
+  state.order = o;
+  settle();
+});
+q('reset').addEventListener('click', () => {
+  state.order = [0, 1, 2];
+  state.scale = [1, 1, 1];
+  select(state.selected);
+  settle();
+});
+
+select(0);
+})();
+</script>
+
+<script>
+// Figure 6 (interactive): equivariance as a commuting square. Top left the
+// network, top right the metanetwork's output; bottom left the network after a
+// symmetry, bottom right the metanetwork applied to that. An equivariant
+// metanetwork gives the same network along both routes; an ordinary one does not.
+// Both metanetworks here are small stand-in maps, not trained models.
+(function () {
+const { el, rng } = window.XP;
+const { SUB, W1, W2 } = window.XP.play;
+
+const root = document.getElementById('fig-equivariance');
+if (!root) return;
+const svg = root.querySelector('svg');
+const q = (role) => root.querySelector(`[data-role="${role}"]`);
+const state = { sym: 'permute', meta: 'equivariant' };
+
+// A network as stored: ids[slot] = neuron id, a[slot][input], b[output][slot].
+const original = () => ({ ids: [0, 1, 2], a: W1.map((r) => r.slice()), b: W2.map((r) => r.slice()) });
+const copy = (n) => ({ ids: n.ids.slice(), a: n.a.map((r) => r.slice()), b: n.b.map((r) => r.slice()) });
+
+// The symmetry: swap the first two hidden slots, or scale neuron h₂ by 2.
+function symmetry(n) {
+  const m = copy(n);
+  if (state.sym === 'permute') {
+    [m.ids[0], m.ids[1]] = [m.ids[1], m.ids[0]];
+    [m.a[0], m.a[1]] = [m.a[1], m.a[0]];
+    m.b.forEach((row) => ([row[0], row[1]] = [row[1], row[0]]));
+  } else {
+    const s = m.ids.indexOf(1);
+    m.a[s] = m.a[s].map((v) => 2 * v);
+    m.b.forEach((row) => (row[s] /= 2));
+  }
+  return m;
+}
+
+// Equivariant stand-in: each neuron's incoming and outgoing weights are updated
+// from that neuron's own weights only, linearly, so the update follows the
+// neuron when it moves and scales with it when it is scaled.
+function metaEquivariant(n) {
+  const m = copy(n);
+  m.a = n.a.map((row) => {
+    const mean = (row[0] + row[1]) / 2;
+    return row.map((v) => v - 0.9 * mean);
+  });
+  for (let s = 0; s < 3; s++) {
+    const mean = (n.b[0][s] + n.b[1][s]) / 2;
+    m.b[0][s] = n.b[0][s] + 0.8 * mean;
+    m.b[1][s] = n.b[1][s] + 0.8 * mean;
+  }
+  return m;
+}
+
+// Ordinary stand-in: adds a fixed correction to every storage position. It is
+// tied to slots, not neurons, and it does not scale, so it breaks both symmetries.
+const r = rng(31);
+const DA = [0, 1, 2].map(() => [r() - 0.5, r() - 0.5].map((v) => 0.8 * v));
+const DB = [0, 1].map(() => [0, 1, 2].map(() => 0.8 * (r() - 0.5)));
+function metaOrdinary(n) {
+  const m = copy(n);
+  m.a = n.a.map((row, s) => row.map((v, i) => v + DA[s][i]));
+  m.b = n.b.map((row, o) => row.map((v, s) => v + DB[o][s]));
+  return m;
+}
+
+const meta = (n) => (state.meta === 'equivariant' ? metaEquivariant(n) : metaOrdinary(n));
+
+// ---- drawing ----
+const W = 200, H = 120;
+function drawMini(x0, y0, n, label, diff) {
+  const g = el('g', { transform: `translate(${x0} ${y0})` }, svg);
+  const IN = [[0, 32], [0, 88]], OUT = [[W, 32], [W, 88]];
+  const HID = [0, 1, 2].map((s) => [W / 2, 4 + s * 56]);
+  const edge = (p, q2, v, bad) => {
+    el('line', {
+      x1: p[0], y1: p[1], x2: q2[0], y2: q2[1], 'stroke-linecap': 'round',
+      style: `stroke: var(${v >= 0 ? '--c-meta' : '--warm'}); stroke-width: ${(0.8 + 2.2 * Math.min(Math.abs(v), 1.6)).toFixed(2)}px; stroke-opacity: 0.85`,
+    }, g);
+    if (bad) {
+      el('line', { x1: p[0], y1: p[1], x2: q2[0], y2: q2[1], class: 'eq-diff' }, g);
+    }
+  };
+  for (let s = 0; s < 3; s++) {
+    IN.forEach((p, i) => edge(p, HID[s], n.a[s][i], diff && diff.a[s][i]));
+    OUT.forEach((p, o) => edge(HID[s], p, n.b[o][s], diff && diff.b[o][s]));
+  }
+  for (const p of [...IN, ...OUT]) el('circle', { cx: p[0], cy: p[1], r: 6, class: 'pm-node' }, g);
+  HID.forEach((p, s) => {
+    el('circle', { cx: p[0], cy: p[1], r: 11, class: 'pm-node' }, g);
+    const t = el('text', { x: p[0], y: p[1] + 4, class: 'eq-name', 'text-anchor': 'middle' }, g);
+    t.textContent = `h${SUB[n.ids[s]]}`;
+  });
+  const t = el('text', { x: W / 2, y: H + 26, class: 'fp-label', 'text-anchor': 'middle' }, g);
+  for (const [text, cls] of label) {
+    const sp = el('tspan', cls ? { class: cls } : {}, t);
+    sp.textContent = text;
+  }
+}
+
+function arrow(x1, y1, x2, y2, text, tx, ty, anchor = 'middle') {
+  const a = Math.atan2(y2 - y1, x2 - x1);
+  el('line', { x1, y1, x2: x2 - 9 * Math.cos(a), y2: y2 - 9 * Math.sin(a), class: 'eq-arrow' }, svg);
+  el('path', {
+    d: `M ${x2} ${y2} L ${x2 - 10 * Math.cos(a - 0.45)} ${y2 - 10 * Math.sin(a - 0.45)} L ${x2 - 10 * Math.cos(a + 0.45)} ${y2 - 10 * Math.sin(a + 0.45)} Z`,
+    class: 'eq-head',
+  }, svg);
+  const t = el('text', { x: tx, y: ty, class: 'eq-arrow-label', 'text-anchor': anchor }, svg);
+  t.textContent = text;
+}
+
+function redraw() {
+  svg.replaceChildren();
+  const theta = original();
+  const top = meta(theta); // top right
+  const left = symmetry(theta); // bottom left
+  const viaTop = symmetry(top); // right, then down
+  const viaLeft = meta(left); // down, then right
+
+  // Where do the two routes disagree?
+  const diff = {
+    a: viaLeft.a.map((row, s) => row.map((v, i) => Math.abs(v - viaTop.a[s][i]) > 1e-9)),
+    b: viaLeft.b.map((row, o) => row.map((v, s) => Math.abs(v - viaTop.b[o][s]) > 1e-9)),
+  };
+  const same = diff.a.every((r2) => r2.every((d) => !d)) && diff.b.every((r2) => r2.every((d) => !d));
+
+  const symText = state.sym === 'permute' ? 'swap h₁ and h₂' : 'scale h₂ by 2';
+  const L = 70, R = 490, T = 20, B = 230;
+  drawMini(L, T, theta, [['network '], ['θ', 'sym-bold']]);
+  drawMini(R, T, top, [['metanetwork output']]);
+  drawMini(L, B, left, [['after the symmetry']]);
+  drawMini(R, B, viaLeft, [['metanetwork output']], diff);
+
+  arrow(L + W + 30, T + 60, R - 30, T + 60, 'metanetwork', (L + W + R) / 2, T + 50);
+  arrow(L + W + 30, B + 60, R - 30, B + 60, 'metanetwork', (L + W + R) / 2, B + 50);
+  arrow(L + W / 2 - 60, T + H + 36, L + W / 2 - 60, B - 6, symText, L + W / 2 - 70, (T + H + B) / 2 + 22, 'end');
+  arrow(R + W / 2 + 60, T + H + 36, R + W / 2 + 60, B - 6, symText, R + W / 2 + 70, (T + H + B) / 2 + 22, 'start');
+
+  const st = q('status');
+  st.textContent = same ? '✓ both routes give the same network' : '✕ the two routes disagree';
+  st.className = 'status ' + (same ? 'ok' : 'bad');
+}
+
+function bindSeg(attr, key) {
+  root.querySelectorAll(`[data-${attr}]`).forEach((b) =>
+    b.addEventListener('click', () => {
+      state[key] = b.dataset[attr];
+      root.querySelectorAll(`[data-${attr}]`).forEach((o) => o.setAttribute('aria-checked', String(o === b)));
+      redraw();
+    }),
+  );
+}
+bindSeg('sym', 'sym');
+bindSeg('meta', 'meta');
+
+redraw();
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,160 @@
+<section class="tex-section" id="sec-symmetries">
+  <h2 class="sec-title"><span class="num">2</span> Weight space symmetries</h2>
+
+  <p>
+    Take a trained network and swap two of its hidden neurons, together with their
+    weights. The list of weights now looks different, but the network computes exactly the
+    same function. A change to the weights that leaves the function untouched is called a
+    <strong class="term">symmetry</strong>, and for a model
+    that works on weights, symmetries are knowledge worth building in. If the model already
+    knows which weights describe the same network, it does not have to learn this from
+    data or spend capacity on the redundancy, which makes it more efficient to train. Two
+    symmetries matter here: reordering hidden neurons, and rescaling them.
+  </p>
+
+  <div class="tex-subsection" id="subsec-permutations">
+    <h3 class="subsec-title"><span class="num">2.1</span> Permutations</h3>
+
+    <p>
+      A hidden layer is a set of neurons, and the order in which we store them is pure
+      bookkeeping. Reorder the hidden neurons, taking their incoming and outgoing weights
+      along, and the network computes exactly the same function. Try it in Figure 3: drag
+      a hidden neuron up or down. The weight matrices a metanetwork would read change, as
+      rows of $W_1$ and columns of $W_2$ swap places, but every input still gives the same
+      output.
+    </p>
+
+    <figure class="xp-fig" id="fig-permute">
+      <div class="xp-controls">
+        <span class="xp-hint">Drag a hidden neuron up or down, or focus one and use the arrow keys.</span>
+        <button type="button" class="xp-btn" data-role="shuffle">Shuffle</button>
+        <button type="button" class="xp-btn" data-role="reset">Reset</button>
+      </div>
+      <svg class="xp-svg" viewBox="0 0 760 300" role="group"
+        aria-label="A 2-3-2 network whose hidden neurons can be reordered, next to its weight matrices"></svg>
+      <div class="xp-readout three">
+        <div class="cell">
+          <span class="rk">Hidden order</span>
+          <span class="rv" data-role="order"></span>
+        </div>
+        <div class="cell">
+          <span class="rk">Weights moved, ‖<span class="var">θ′ − θ</span>‖</span>
+          <span class="rv" data-role="dtheta"></span>
+        </div>
+        <div class="cell">
+          <span class="status" data-role="status"></span>
+        </div>
+      </div>
+    </figure>
+    <p class="figure-caption">
+      <span class="figure-num">Figure 3.</span> Permuting hidden neurons. The network uses
+      ReLU and the weights of Figure 1, without biases. On the right, the weight matrices
+      as stored: $W_1$ has one row per hidden neuron, $W_2$ one column.
+    </p>
+  </div>
+
+  <div class="tex-subsection" id="subsec-scaling">
+    <h3 class="subsec-title"><span class="num">2.2</span> Scaling</h3>
+
+    <p>
+      For many activations you can also rescale a neuron. Multiply its incoming weights by
+      a factor $q$, divide its outgoing weights by the same factor, and the network
+      computes the same function, provided the activation commutes with the scaling:
+      $\sigma(qz) = q\,\sigma(z)$. For ReLU that holds for every $q &gt; 0$. For $\tanh$,
+      which is odd but not linear, it only holds for $q = \pm 1$: you can flip the sign of
+      a neuron, but not stretch it. Try it in Figure 4: select a hidden neuron and move
+      the slider, then switch to $\tanh$, or stop dividing the outgoing weights, and watch
+      the function break.
+    </p>
+
+    <figure class="xp-fig" id="fig-scale">
+      <div class="xp-controls">
+        <div class="xp-seg" role="radiogroup" aria-label="Activation">
+          <button type="button" role="radio" aria-checked="true" data-act="relu">ReLU</button>
+          <button type="button" role="radio" aria-checked="false" data-act="tanh">tanh</button>
+        </div>
+        <label>scale <span data-role="sel">h₁</span> by <span class="qsym" data-role="q-name">q₁</span>
+          <input type="range" min="-3" max="3" step="0.01" value="1" data-role="q">
+          <output data-role="q-val">1.00</output>
+        </label>
+        <label class="check"><input type="checkbox" checked data-role="compensate"> divide outgoing weights by <span class="qsym">q</span></label>
+        <button type="button" class="xp-btn" data-role="reset">Reset</button>
+      </div>
+      <svg class="xp-svg" viewBox="0 0 760 300" role="group"
+        aria-label="A 2-3-2 network whose hidden neurons can be rescaled, next to its weight matrices"></svg>
+      <div class="xp-readout">
+        <div class="cell">
+          <span class="rk">Weights moved, ‖<span class="var">θ′ − θ</span>‖</span>
+          <span class="rv" data-role="dtheta"></span>
+        </div>
+        <div class="cell">
+          <span class="status" data-role="status"></span>
+        </div>
+      </div>
+    </figure>
+    <p class="figure-caption">
+      <span class="figure-num">Figure 4.</span> Scaling hidden neurons. Click a hidden
+      neuron to select it; the slider sets its factor $q$, which snaps to $\pm 1$. The
+      network is the one of Figure 3.
+    </p>
+  </div>
+
+  <div class="tex-subsection" id="subsec-cnn">
+    <h3 class="subsec-title"><span class="num">2.3</span> Symmetries in a CNN</h3>
+
+    <p>
+      Convolutional networks have the same two symmetries, with channels in the role of
+      neurons. Reorder the channels of a layer, taking each channel's kernel and its slice
+      of the next layer's kernel along, and nothing changes. Multiply a channel's kernel by
+      $q &gt; 0$ and divide its slice of the next kernel by $q$, and for ReLU nothing
+      changes either. Try both in Figure 5.
+    </p>
+
+    <figure class="xp-fig" id="fig-cnn">
+      <div class="xp-controls">
+        <label>scale <span data-role="sel">c₁</span> by <span class="qsym" data-role="q-name">q₁</span>
+          <input type="range" min="0.1" max="3" step="0.01" value="1" data-role="q">
+          <output data-role="q-val">1.00</output>
+        </label>
+        <button type="button" class="xp-btn" data-role="shuffle">Shuffle</button>
+        <button type="button" class="xp-btn" data-role="reset">Reset</button>
+      </div>
+      <svg class="xp-svg" viewBox="0 0 760 368" role="group"
+        aria-label="A tiny CNN with three channels whose order and scale can be changed"></svg>
+      <div class="xp-readout">
+        <div class="cell">
+          <span class="rk">Channel order</span>
+          <span class="rv" data-role="order"></span>
+        </div>
+        <div class="cell">
+          <span class="status" data-role="status"></span>
+        </div>
+      </div>
+    </figure>
+    <p class="figure-caption">
+      <span class="figure-num">Figure 5.</span> A tiny CNN: a $3 \times 3$ input, three
+      channels with $2 \times 2$ kernels and ReLU, and a second layer that maps the three
+      $2 \times 2$ feature maps to one output. Drag a channel to reorder it; click one to
+      select it for scaling.
+    </p>
+
+    <p>
+      Notice that you can only scale whole channels. In the MLP every hidden neuron could be
+      scaled on its own. In a CNN, every position of a feature map is a neuron too, but all
+      positions of a channel are computed with the same kernel. A convolutional layer has
+      no separate weights per position, so there is nothing to scale one position with:
+      giving one position its own factor would need a different kernel at that position,
+      and the layer would no longer be a convolution.
+    </p>
+
+    <p>
+      So a convolutional layer has one scaling factor per channel, where a dense layer has
+      one per neuron. In the language of physics, its <strong class="term">gauge
+      freedom</strong> is smaller. We prove this in the paper: the scaling symmetries of a
+      convolutional layer are a strict subset of those of a dense layer with the same
+      inputs and outputs. Across a whole network the gap is large. An MLP has as many
+      scaling directions as it has hidden neurons and inputs; a CNN has as many as it has
+      channels, which is usually far fewer.
+    </p>
+  </div>
+</section>

@@ -1,0 +1,57 @@
+<section class="tex-section" id="sec-motivation">
+  <h2 class="sec-title"><span class="num">1</span> Motivation</h2>
+
+  <p>
+    Neural networks have grown exponentially in scale, and so has the bill for training
+    them. Yet every network still starts life the same way: random weights, followed by
+    thousands of gradient steps until the loss stops falling. Much of that effort goes
+    into rediscovering what earlier training runs on similar problems already found. So it
+    is worth asking whether optimization itself can be learned.
+  </p>
+
+  <p>
+    <strong class="term">Metanetworks</strong>, neural networks that take other neural
+    networks as input, are a natural tool for this. One application is weight prediction:
+    given only the architecture $G \in \mathcal{G}$ of a new network, a metanetwork
+    predicts a full set of weights $\boldsymbol{\theta} \in \Theta$ for it in a single
+    forward pass. It learns a map $\mathcal{G} \to \Theta$ from architecture space to
+    parameter space (<a class="cite" href="#ref-zhang2020">Zhang et al., 2020</a>; <a class="cite" href="#ref-knyazev2021">Knyazev et al., 2021</a>).
+  </p>
+
+  <figure class="xp-fig" id="fig-predict">
+    <svg class="xp-svg" viewBox="0 0 760 250" role="img"
+      aria-label="An MLP architecture without weights goes into a metanetwork, which outputs the same MLP with initialized weights"></svg>
+  </figure>
+  <p class="figure-caption">
+    <span class="figure-num">Figure 1.</span> Weight prediction. The metanetwork sees only
+    the architecture, a small MLP here, and returns a full set of weights for it. Edge width
+    shows the size of a weight, blue positive and orange negative; the numbers are
+    illustrative.
+  </p>
+
+  <p>
+    Predicted weights are rarely the finished product. You will usually still run some
+    gradient descent to reach the accuracy you want, but you start from a better place in
+    the loss landscape.
+  </p>
+
+  <p>
+    In practice, though, we rarely start from scratch. More often we already have a
+    trained network and want to improve it: make it more accurate, say, or make it
+    sparse. That raises a natural question: can the same principle work for networks whose
+    weights already contain information? This is what our proof-of-concept paper is about.
+    The metanetwork reads the existing weights $\boldsymbol{\theta}$ alongside the
+    architecture and returns improved weights $\boldsymbol{\theta}'$ in one forward pass: a
+    map $\mathcal{G} \times \Theta \to \Theta$.
+  </p>
+
+  <figure class="xp-fig" id="fig-amortize">
+    <svg class="xp-svg" viewBox="0 0 760 250" role="img"
+      aria-label="An MLP with existing weights goes into a metanetwork, which outputs the same MLP with improved weights"></svg>
+  </figure>
+  <p class="figure-caption">
+    <span class="figure-num">Figure 2.</span> Our setting. The metanetwork now reads the
+    weights the network already has and returns improved ones. No gradient step ever
+    touches the network itself. The numbers are illustrative.
+  </p>
+</section>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amortized Optimization with ScaleGMNs</title>
+
+<!--
+  ============================================================================
+  GENERATED FILE: do not edit by hand. Edit the sources in
+  explainers/scalegmn/src/ and run `npm run build` (or `node build.js`) there.
+  ============================================================================
+  Sources:
+    src/template.html      this skeleton (head, hero, script order)
+    src/style.css          base styling from the Gromov loss notes; design
+                           tokens live in :root at the top
+    src/figures.css        styling for this page's interactive figures
+    src/sections/*.html    one <section class="tex-section"> per file, included
+                           in filename order; add a new numbered file to add
+                           a section; the TOC rebuilds itself from <h2>/<h3>
+    src/js/common.js       helpers shared by the figures (canvas, color, contours)
+    src/js/mlp-diagram.js  shared network -> metanetwork -> network diagram
+    src/js/net-play.js     shared network, matrices and checks for Figures 3 and 4
+    src/js/fig-*.js        one script per interactive figure, each in its own
+                           <script> tag below so one failing figure cannot
+                           stop the others
+
+  Authoring conventions inside a section:
+    displayed math    <div class="equation" id="eq:label">\[ ... \]</div>
+                      (numbered automatically in document order)
+    reference         <span class="eqref" data-ref="eq:label"></span>  → "(n)"
+    inline math       $...$ anywhere in a paragraph
+    subsection        <div class="tex-subsection">…</div>
+  ============================================================================
+-->
+
+<!-- MathJax (math rendering, SVG output: draws glyphs as vector paths so
+     nothing depends on an external font file loading) -->
+<script>
+<!-- @include js/mathjax-config.js -->
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg-full.min.js"></script>
+
+<!-- Type -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+<!-- @include style.css -->
+
+<!-- @include figures.css -->
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <p class="back sans"><a href="/research/scale-equivariant-metanetworks/">← Freek Byrman, research</a></p>
+  <h1 class="paper-title">Symmetry-Aware Fully-Amortized Optimization with Scale Equivariant Graph Metanetworks</h1>
+  <p class="authors">B. Kuipers, <span class="me">F. Byrman</span>, D. Uyterlinde, A. García-Castellanos</p>
+  <p class="venue sans">NeurIPS 2025 UniReps Workshop, Extended Abstract Track</p>
+</header>
+
+<div class="shell">
+  <article>
+
+<!-- @include sections/*.html -->
+
+  </article>
+
+  <nav class="toc" aria-label="Table of contents">
+    <p class="toc-label">CONTENTS</p>
+    <ol id="toc-list"></ol>
+  </nav>
+</div>
+
+<script>
+<!-- @include js/page.js -->
+</script>
+
+<script>
+<!-- @include js/common.js -->
+</script>
+
+<script>
+<!-- @include js/mlp-diagram.js -->
+</script>
+
+<script>
+<!-- @include js/fig-predict.js -->
+</script>
+
+<script>
+<!-- @include js/fig-amortize.js -->
+</script>
+
+<script>
+<!-- @include js/net-play.js -->
+</script>
+
+<script>
+<!-- @include js/fig-permute.js -->
+</script>
+
+<script>
+<!-- @include js/fig-scale.js -->
+</script>
+
+<script>
+<!-- @include js/fig-cnn.js -->
+</script>
+
+<script>
+<!-- @include js/fig-equivariance.js -->
+</script>
+
+</body>
+</html>

@@ -4,9 +4,10 @@ import Card from './Card.astro';
 interface Props { collection: 'research' | 'projects'; limit?: number }
 const { collection, limit } = Astro.props;
 const entries = (await getCollection(collection, ({ data }) => !data.draft))
-  .sort((a, b) => b.data.year - a.data.year);
+  .sort((a, b) => b.data.year - a.data.year || ('order' in b.data ? b.data.order : 0) - ('order' in a.data ? a.data.order : 0));
 const shown = limit ? entries.slice(0, limit) : entries;
 ---
+{shown.length === 0 && <p class="muted">Nothing here yet.</p>}
 <ul class="list">
   {shown.map((e) => (
     <Card href={`/${collection}/${e.id}/`} title={e.data.title} summary={e.data.summary}

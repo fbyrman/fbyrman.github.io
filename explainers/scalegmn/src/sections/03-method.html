@@ -1,0 +1,85 @@
+<section class="tex-section" id="sec-method">
+  <h2 class="sec-title"><span class="num">3</span> Method</h2>
+
+  <p>
+    Our metanetwork is a <strong class="term">Scale Equivariant Graph Metanetwork</strong>
+    (ScaleGMN, <a class="cite" href="#ref-kalogeropoulos2024">Kalogeropoulos et al., 2024</a>). It reads a trained network and returns new
+    weights for it, and it has the symmetries of Section 2 built in.
+  </p>
+
+  <div class="tex-subsection" id="subsec-graph">
+    <h3 class="subsec-title"><span class="num">3.1</span> Networks as graphs</h3>
+
+    <p>
+      The metanetwork reads the input network as a graph: neurons are vertices that carry
+      their biases, and connections are edges that carry their weights
+      (<a class="cite" href="#ref-kofinas2024">Kofinas et al., 2024</a>). For a CNN, channels are the vertices and kernels sit on the edges. A graph has
+      no built-in order, so reordering the neurons of a layer changes nothing for the
+      metanetwork. Permutation symmetry comes for free.
+    </p>
+  </div>
+
+  <div class="tex-subsection" id="subsec-equivariance">
+    <h3 class="subsec-title"><span class="num">3.2</span> Equivariance</h3>
+
+    <p>
+      For scaling, every step inside the metanetwork first brings its inputs to a
+      canonical form, in which all rescaled copies of a neuron look the same. The result is
+      a metanetwork that is <strong class="term">equivariant</strong>: permute or rescale
+      the input network, and the output network is permuted or rescaled in exactly the
+      same way. In Figure 6 that means both routes around the square end at the same
+      network. An ordinary metanetwork has no such guarantee. It has to learn the
+      symmetries from data, and only ever approximately.
+    </p>
+
+    <figure class="xp-fig" id="fig-equivariance">
+      <div class="xp-controls">
+        <div class="xp-seg" role="radiogroup" aria-label="Symmetry">
+          <button type="button" role="radio" aria-checked="true" data-sym="permute">permute</button>
+          <button type="button" role="radio" aria-checked="false" data-sym="scale">scale</button>
+        </div>
+        <div class="xp-seg" role="radiogroup" aria-label="Metanetwork">
+          <button type="button" role="radio" aria-checked="true" data-meta="equivariant">equivariant metanetwork</button>
+          <button type="button" role="radio" aria-checked="false" data-meta="ordinary">ordinary metanetwork</button>
+        </div>
+      </div>
+      <svg class="xp-svg" viewBox="0 0 760 400" role="img"
+        aria-label="A commuting square: a network, its metanetwork output, the network after a symmetry, and the metanetwork output of that"></svg>
+      <div class="xp-readout">
+        <div class="cell"><span class="status" data-role="status"></span></div>
+      </div>
+    </figure>
+    <p class="figure-caption">
+      <span class="figure-num">Figure 6.</span> Equivariance. Going right applies the
+      metanetwork, going down applies the symmetry. Bottom right is reached by applying
+      the symmetry first; edges where it differs from the other route are outlined. Both
+      metanetworks are simple stand-in maps, not trained models: the equivariant one
+      updates each neuron's weights from that neuron alone, the ordinary one adds a fixed
+      correction to every storage position.
+    </p>
+  </div>
+
+  <div class="tex-subsection" id="subsec-training">
+    <h3 class="subsec-title"><span class="num">3.3</span> Training</h3>
+
+    <p>
+      We train on a <strong class="term">model zoo</strong>: a large collection of small
+      networks, all trained to classify grayscale CIFAR-10 images
+      (<a class="cite" href="#ref-krizhevsky2009">Krizhevsky, 2009</a>). For CNNs we use the public Small CNN Zoo
+      (<a class="cite" href="#ref-unterthiner2021">Unterthiner et al., 2021</a>); for MLPs we built our own. For each network in a batch, the
+      metanetwork proposes new weights, and we measure how well the proposed network
+      classifies. Optionally we add a penalty on the size of the weights, which pushes many
+      of them to zero and makes the network sparse. The error flows back through the
+      proposed network into the metanetwork: we train the metanetwork, never the networks
+      in the zoo.
+    </p>
+
+    <p>
+      At test time the metanetwork fine-tunes networks, and images, it has never seen, in
+      a single forward pass. As a reference we fine-tune the same test networks with SGD
+      for 25 to 150 epochs. To isolate what scale equivariance contributes, we also train
+      the same metanetwork without its canonicalization step. In the results, our
+      metanetwork is called ScaleGMN-B and this symmetry-broken version GMN-B.
+    </p>
+  </div>
+</section>

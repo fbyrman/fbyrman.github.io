@@ -12,6 +12,8 @@ const research = defineCollection({
     venue: z.string().optional(),
     authors: z.string().optional(),
     links,
+    // Breaks ties within a year: higher comes first.
+    order: z.number().default(0),
     draft: z.boolean().default(false),
   }),
 });

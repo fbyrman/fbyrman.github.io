@@ -1,0 +1,234 @@
+/* ---------------- tokens added for this page ---------------- */
+:root {
+  /* Figure identities, the same in every figure: metanetwork, iterative
+     optimiser, symmetry-broken model. Validated for colour-blind separation
+     against --eq-bg in both modes. */
+  --c-meta:   #1F5FAE;
+  --c-sgd:    #B8863A;
+  --c-broken: #B0475C;
+  /* Negative weights; positive weights use --c-meta. */
+  --warm:     #C0632A;
+  --ok:       #2F7D4F;
+  /* Loss landscapes: deep at low loss, fading into the panel at high loss. */
+  --land-0:   #15305F;
+  --land-1:   #3B68A6;
+  --land-2:   #9DBBE0;
+  --land-3:   #F4F2EC;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --c-meta:   #5A8ED8;
+    --c-sgd:    #B8873A;
+    --c-broken: #CF5F80;
+    --warm:     #E08A55;
+    --ok:       #6CC08E;
+    --land-0:   #C3DAFB;
+    --land-1:   #5F8FD0;
+    --land-2:   #2B4670;
+    --land-3:   #1B1D24;
+  }
+}
+:root[data-theme="dark"] {
+  --c-meta:   #5A8ED8;
+  --c-sgd:    #B8873A;
+  --c-broken: #CF5F80;
+  --warm:     #E08A55;
+  --ok:       #6CC08E;
+  --land-0:   #C3DAFB;
+  --land-1:   #5F8FD0;
+  --land-2:   #2B4670;
+  --land-3:   #1B1D24;
+}
+
+/* ---------------- hero additions ---------------- */
+.hero .back { margin: 0 0 1.2rem; font-size: 0.85rem; }
+.hero .back a { color: var(--ink-soft); text-decoration: none; }
+.hero .back a:hover { color: var(--accent); }
+/* A paper title is longer than the Gromov hero expects: smaller and wider. */
+.hero h1.paper-title {
+  font-size: clamp(1.8rem, 3.4vw, 2.6rem);
+  line-height: 1.15;
+  max-width: 30ch;
+}
+.hero .authors {
+  margin: 1.1rem 0 0;
+  font-size: 1.1rem;
+  color: var(--ink);
+}
+.hero .authors .me { font-weight: 700; }
+.hero .venue {
+  margin: 0.4rem 0 2.6rem;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+.hero .venue a { color: var(--accent); }
+
+/* ---------------- interactive figures ---------------- */
+.xp-fig {
+  background: var(--eq-bg);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  padding: 1rem 1.1rem 1.1rem;
+  margin: 1.7rem 0 0;
+}
+.xp-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.2rem;
+  margin: 0 0 0.8rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+.xp-controls .var { font-family: "Source Serif 4", serif; font-style: italic; font-weight: 700; color: var(--ink); }
+.xp-controls label { display: inline-flex; align-items: center; gap: 0.5rem; }
+.xp-controls input[type="range"] { width: 120px; accent-color: var(--accent); }
+.xp-controls output { font-variant-numeric: tabular-nums; min-width: 2.6em; color: var(--ink); }
+.xp-btn {
+  font-family: Inter, sans-serif;
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+.xp-btn:hover { color: var(--accent); }
+
+.xp-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 3px;
+  background: var(--paper-raise);
+  touch-action: none;
+}
+.xp-canvas.landscape { cursor: crosshair; }
+
+.xp-readout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem 1.4rem;
+  margin-top: 0.8rem;
+  font-family: "Source Serif 4", serif;
+  font-size: 0.92rem;
+}
+.xp-readout.three { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 640px) { .xp-readout, .xp-readout.three { grid-template-columns: 1fr; } }
+.xp-readout .cell {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.22rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.xp-readout .cell .rk { flex: 1; white-space: nowrap; }
+.xp-readout .cell .rv { font-variant-numeric: tabular-nums; }
+.xp-readout .cell .rv.soft { color: var(--ink-soft); }
+.xp-readout .swatch { width: 9px; height: 9px; border-radius: 50%; align-self: center; }
+.xp-readout .meta .swatch { background: var(--c-meta); }
+.xp-readout .sgd .swatch { background: var(--c-sgd); }
+
+/* Figure 1: weight prediction diagram */
+.xp-svg { display: block; width: 100%; height: auto; }
+.xp-svg .fp-label { font-family: "Source Serif 4", serif; font-size: 15px; fill: var(--ink); }
+.xp-svg .fp-box { font-family: Inter, sans-serif; font-weight: 600; font-size: 14px; fill: var(--ink); }
+.xp-svg .fp-math { font-family: "Source Serif 4", serif; font-size: 17px; fill: var(--ink-soft); }
+/* Symbols set as in the math: G italic, theta bold italic, Theta upright. */
+.xp-svg .sym { font-style: italic; }
+.xp-svg .sym-bold { font-style: italic; font-weight: 700; }
+.xp-svg .sym-up { font-style: normal; }
+/* Weight values sit on their edges, on a small backing (see fig-predict.js). */
+.xp-svg .fp-weight {
+  font-family: Inter, sans-serif;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  fill: var(--ink);
+}
+
+/* Figure 3: permutation playground */
+.xp-svg .pm-node { fill: var(--eq-bg); stroke: var(--ink); stroke-width: 1.5px; }
+.xp-svg .pm-hidden { cursor: grab; outline: none; }
+.xp-svg .pm-hidden:active { cursor: grabbing; }
+.xp-svg .pm-hidden.is-active .pm-node { stroke: var(--accent); stroke-width: 3px; }
+.xp-svg .pm-hidden:focus-visible .pm-node { stroke: var(--accent); stroke-width: 3px; stroke-dasharray: 3 2; }
+.xp-svg .pm-name { font-family: "Source Serif 4", serif; font-style: italic; font-weight: 700; font-size: 14px; fill: var(--ink); pointer-events: none; }
+.xp-svg .pm-cell.is-active { stroke: var(--accent); stroke-width: 2px; }
+.xp-svg .pm-mat { font-family: "Source Serif 4", serif; font-style: italic; font-weight: 700; font-size: 16px; fill: var(--ink); }
+.xp-svg .pm-rowlabel { font-family: "Source Serif 4", serif; font-style: italic; font-size: 13px; fill: var(--ink-soft); }
+.xp-svg .pm-rowlabel.is-active { fill: var(--accent); font-weight: 700; }
+.xp-hint { font-family: Inter, sans-serif; font-size: 0.78rem; color: var(--ink-soft); }
+.xp-readout .rv .var { font-family: "Source Serif 4", serif; font-style: italic; }
+
+/* Figure 4: scaling playground */
+.xp-svg .pm-badge { font-family: Inter, sans-serif; font-weight: 600; font-size: 11px; fill: var(--accent); }
+.xp-seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.xp-seg button {
+  font-family: Inter, sans-serif;
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  padding: 0.2rem 0.65rem;
+  cursor: pointer;
+}
+.xp-seg button + button { border-left: 1px solid var(--rule); }
+.xp-seg button[aria-checked="true"] { background: var(--paper-raise); color: var(--ink); }
+.xp-controls .check { gap: 0.4rem; }
+.xp-controls .check input { accent-color: var(--accent); margin: 0; }
+.xp-readout .status { font-family: Inter, sans-serif; font-size: 0.8rem; font-weight: 600; }
+.xp-readout .status.ok { color: var(--ok, #2F7D4F); }
+.xp-readout .status.bad { color: var(--c-broken); }
+
+/* Figure 5: CNN symmetries */
+.xp-svg .cn-input { fill: var(--paper-raise); stroke: var(--rule); }
+.xp-svg .cn-label { font-family: Inter, sans-serif; font-size: 11.5px; fill: var(--ink-soft); }
+.xp-svg .cn-sub { font-family: Inter, sans-serif; font-size: 10px; fill: var(--ink-soft); text-anchor: middle; }
+.xp-svg .cn-wire { stroke: var(--ink-soft); stroke-width: 1.2px; stroke-opacity: 0.5; }
+.xp-svg .cn-wire.is-active { stroke: var(--accent); stroke-opacity: 1; stroke-width: 1.8px; }
+.xp-svg .cn-card { cursor: grab; outline: none; }
+.xp-svg .cn-card:active { cursor: grabbing; }
+.xp-svg .cn-card-bg { fill: var(--eq-bg); stroke: var(--rule); stroke-width: 1.2px; }
+.xp-svg .cn-card.is-active .cn-card-bg { stroke: var(--accent); stroke-width: 2.4px; }
+.xp-svg .cn-card:focus-visible .cn-card-bg { stroke: var(--accent); stroke-width: 2.4px; stroke-dasharray: 4 3; }
+.xp-svg .cn-fmap { fill: var(--paper-raise); stroke: var(--rule); }
+.xp-svg .fp-weight.is-scaled, .xp-svg .cn-sub.is-scaled { fill: var(--accent); font-weight: 600; }
+.xp-svg .pm-badge.is-idle { fill: var(--ink-soft); font-weight: 500; }
+
+/* Figure 6: equivariance square */
+.xp-svg .eq-name { font-family: "Source Serif 4", serif; font-style: italic; font-weight: 700; font-size: 11px; fill: var(--ink); }
+.xp-svg .eq-arrow { stroke: var(--ink-soft); stroke-width: 1.6px; }
+.xp-svg .eq-head { fill: var(--ink-soft); }
+.xp-svg .eq-arrow-label { font-family: Inter, sans-serif; font-size: 12px; fill: var(--ink-soft); }
+.xp-svg .eq-diff { stroke: var(--c-broken); stroke-width: 7px; stroke-opacity: 0.35; stroke-linecap: round; fill: none; }
+
+/* Citations, links and references */
+a.cite { color: var(--accent); text-decoration: none; border-bottom: 1px dotted var(--accent-soft); }
+a.cite:hover { color: var(--gold); border-color: var(--gold); }
+.xp-refs li:target { background: var(--eq-bg-hit); border-radius: 3px; }
+.xp-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.9rem; margin: 0 0 1.6rem; max-width: 42rem; }
+@media (max-width: 640px) { .xp-links { grid-template-columns: 1fr; } }
+.xp-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.8rem 1rem;
+  background: var(--eq-bg);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+.xp-link:hover { border-color: var(--accent); }
+.xp-link-kind { font-family: Inter, sans-serif; font-size: 0.72rem; font-weight: 600; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; }
+.xp-link-title { font-family: "Source Serif 4", serif; font-size: 1.05rem; color: var(--accent); }
+.xp-refs { padding-left: 1.4rem; max-width: 42rem; font-size: 0.92rem; line-height: 1.55; }
+.xp-refs li { margin: 0 0 0.6rem; padding: 0.1rem 0.3rem; }
+.xp-refs li::marker { color: var(--ink-soft); font-family: Inter, sans-serif; font-size: 0.8rem; }
+.xp-refs a { color: var(--accent); }
+.xp-controls .qsym { font-family: "Source Serif 4", serif; font-style: italic; font-weight: 400; font-size: 0.95rem; color: var(--ink); }

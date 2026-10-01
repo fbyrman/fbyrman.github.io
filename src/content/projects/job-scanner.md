@@ -9,7 +9,7 @@ draft: true
 
 A scanner that collects job postings from two worlds into one ranked interface.
 
-- **Academia:** 61 organisations on AcademicTransfer, covering every Dutch university, the UMCs and the research institutes, plus the ELLIS jobs board.
+- **Academia:** 61 organizations on AcademicTransfer, covering every Dutch university, the UMCs and the research institutes, plus the ELLIS jobs board.
 - **Industry:** 104 company boards across thirteen sectors, read directly from the applicant tracking system each company publishes through, with custom readers for four companies that have none.
 
 Every posting is scored for relevance, and reruns flag what is new since last time. Roles
