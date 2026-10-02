@@ -1,0 +1,68 @@
+<section class="tex-section" id="sec-results">
+  <h2 class="sec-title"><span class="num">4</span> Preliminary results</h2>
+
+  <p>
+  <p>
+    This was a side contribution of my thesis, and a full study is not worth the compute
+    to me, but I wanted to show something. So I trained two ViT-S/16 models, one per loss,
+    for 50,000 steps at batch size 512 on ImageNet with synthetic captions. They are
+    hyperbolic, with the negated Lorentzian distance as similarity, and as far as I know
+    this is the first use of the sigmoid loss in hyperbolic space. With $b = -10$ training
+    never settles; with prior matching ($\mu$ from four batches) it trains stably.
+  </p>
+
+  <p>
+  <p>
+    The sigmoid loss wins zero-shot classification on six of seven benchmarks, by 15
+    points on CIFAR-10 (Table 1), but trails softmax on retrieval (Table 2). One run per
+    loss, no tuning: a first look, not a verdict.
+  </p>
+
+  <p class="table-caption"><span class="table-num">Table 1.</span> Zero-shot classification
+    accuracy (%) on seven general benchmarks. The <span class="best-key">shaded</span> cell
+    marks the better loss in each column.</p>
+  <div class="table-scroll">
+    <table class="results">
+      <thead>
+        <tr>
+          <th class="model">Loss</th>
+          <th class="bandB">ImageNet</th><th class="bandB">ImageNet-v2</th><th class="bandB">CIFAR-10</th>
+          <th class="bandB">CIFAR-100</th><th class="bandB">SUN397</th><th class="bandB">Caltech-101</th><th class="bandB">STL-10</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="model">Softmax</td><td>25.3</td><td>20.2</td><td>48.2</td><td>25.6</td><td class="best">13.8</td><td>38.2</td><td>80.8</td></tr>
+        <tr><td class="model">Sigmoid</td><td class="best">26.3</td><td class="best">20.8</td><td class="best">63.7</td><td class="best">27.1</td><td>13.1</td><td class="best">39.0</td><td class="best">84.1</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="table-caption"><span class="table-num">Table 2.</span> Zero-shot retrieval
+    (%, recall at 5 and 10) on COCO and Flickr30K. The
+    <span class="best-key">shaded</span> cell marks the better loss in each column.</p>
+  <div class="table-scroll">
+    <table class="results">
+      <thead>
+        <tr class="groups">
+          <th></th>
+          <th class="bandA" colspan="4">Text → image</th>
+          <th class="bandB" colspan="4">Image → text</th>
+        </tr>
+        <tr class="groups">
+          <th></th>
+          <th class="bandA" colspan="2">COCO</th><th class="bandA" colspan="2">Flickr30K</th>
+          <th class="bandB" colspan="2">COCO</th><th class="bandB" colspan="2">Flickr30K</th>
+        </tr>
+        <tr>
+          <th class="model">Loss</th>
+          <th class="bandA">R@5</th><th class="bandA">R@10</th><th class="bandA">R@5</th><th class="bandA">R@10</th>
+          <th class="bandB">R@5</th><th class="bandB">R@10</th><th class="bandB">R@5</th><th class="bandB">R@10</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="model">Softmax</td><td class="best">20.5</td><td class="best">28.8</td><td class="best">27.1</td><td class="best">36.3</td><td class="best">30.1</td><td class="best">41.3</td><td class="best">37.6</td><td class="best">48.1</td></tr>
+        <tr><td class="model">Sigmoid</td><td>19.7</td><td>27.6</td><td>25.3</td><td>33.5</td><td>29.8</td><td>39.9</td><td>37.5</td><td>47.8</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>

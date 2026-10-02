@@ -1,0 +1,70 @@
+<section class="tex-section" id="sec-bias">
+  <h2 class="sec-title"><span class="num">2</span> The role of the bias term</h2>
+
+  <p>
+    Take cosine similarity, and a model with randomly initialized weights, so that the
+    average similarity between an image and a caption is 0. Without a bias, every pair
+    then gets a predicted chance of $\sigma(0) = \tfrac{1}{2}$ of being a match. That is
+    far too optimistic: of the $|\mathcal{B}|^2$ pairs in a batch, only $|\mathcal{B}|$
+    match, so the true rate, the <strong class="term">batch prior</strong>, is
+    $1/|\mathcal{B}|$ (Figure 3).
+  </p>
+
+  <figure class="xp-fig" id="fig-batch">
+    <div class="xp-controls">
+      <label>batch size <span class="var">|B|</span>
+        <input type="range" min="2" max="15" step="1" value="3" data-role="n">
+        <output data-role="n-val">8</output>
+      </label>
+    </div>
+    <canvas class="xp-canvas grid" width="860" height="320" data-role="canvas"
+      aria-label="A grid of all image-caption combinations in a batch, with the matching pairs on the diagonal"></canvas>
+  </figure>
+  <p class="figure-caption">
+    <span class="figure-num">Figure 3.</span> Every image paired with every caption in a
+    batch. Only the $|\mathcal{B}|$ pairs on the diagonal are matches, so the share of matches,
+    $1/|\mathcal{B}|$, shrinks as the batch grows.
+  </p>
+
+  <p>
+    The bias fixes this. It shifts every logit $t\,\kappa + b$, so a negative bias makes
+    the model sceptical by default. SigLIP initializes it at $b = -10$, which consistently
+    improves performance across all tasks: training starts close to the prior, and the
+    first steps no longer over-correct
+    (<a class="cite" href="#ref-zhai2023">Zhai et al., 2023</a>).
+  </p>
+
+  <p>
+    That number hides two assumptions: a fixed batch size, since the prior changes with
+    $|\mathcal{B}|$, and a similarity centred at zero, since with mean similarity $\mu$ the
+    model starts at $\sigma(t\,\mu + b)$. Figure 4 shows what happens when either one
+    fails.
+  </p>
+
+  <figure class="xp-fig" id="fig-bias">
+    <div class="xp-controls">
+      <label>batch size <span class="var">|B|</span>
+        <input type="range" min="6" max="15" step="1" value="9" data-role="n">
+        <output data-role="n-val">512</output>
+      </label>
+      <label>mean similarity <span class="var">μ</span>
+        <input type="range" min="-1" max="1" step="0.01" value="0" data-role="mu">
+        <output data-role="mu-val">0.00</output>
+      </label>
+      <label>temperature <span class="var">t</span>
+        <input type="range" min="1" max="30" step="1" value="10" data-role="t">
+        <output data-role="t-val">10</output>
+      </label>
+    </div>
+    <svg class="plot-svg" viewBox="0 0 860 180" role="img"
+      aria-label="A log-scale axis with the predicted chance of a match at the start of training for no bias, SigLIP's bias and prior matching, against the batch prior"></svg>
+  </figure>
+  <p class="figure-caption">
+    <span class="figure-num">Figure 4.</span> Where training starts: the predicted chance
+    of a match at the mean similarity $\mu$ and temperature $t$. It should start on
+    the batch prior (green). Without a bias (grey) it starts near ½; SigLIP's $b = -10$
+    (orange) only lands on it for $\mu = 0$ and a batch of about 22,000, whatever the
+    temperature. Prior matching
+    (blue) always does.
+  </p>
+</section>

@@ -1,0 +1,21 @@
+<section class="tex-section" id="sec-prior">
+  <h2 class="sec-title"><span class="num">3</span> Prior-matching initialization</h2>
+
+  <p>
+  <p>
+    The fix is to choose $b$ so that the model starts exactly on the prior,
+    $\sigma(t\,\mu + b) = 1/|\mathcal{B}|$. Solving for $b$:
+  </p>
+
+  <div class="equation" id="eq:bstar">\[
+    \boxed{\; b^\star = -\ln\big(|\mathcal{B}| - 1\big) - t\,\mu \;}
+  \]</div>
+
+  <p>
+  <p>
+    The first term handles the batch size, the second the mean similarity. For cosine
+    similarity and a batch of 512, this gives $b^\star \approx -6.2$ rather than $-10$.
+    The only extra cost is estimating $\mu$: the mean similarity over a few batches,
+    before training starts.
+  </p>
+</section>
