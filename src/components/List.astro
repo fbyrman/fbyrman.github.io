@@ -12,6 +12,7 @@ const shown = limit ? entries.slice(0, limit) : entries;
   {shown.map((e) => (
     <Card href={('page' in e.data && e.data.page) || `/${collection}/${e.id}/`} title={e.data.title} summary={e.data.summary}
       year={e.data.year} venue={'venue' in e.data ? e.data.venue : undefined}
+      authors={'authors' in e.data ? e.data.authors : undefined}
       stack={'stack' in e.data ? e.data.stack : undefined}
       status={'status' in e.data ? e.data.status : undefined} />
   ))}

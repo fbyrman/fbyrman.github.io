@@ -7,7 +7,6 @@ authors: <strong>F. Byrman</strong>, E. Kasteleyn, B. Kuipers, D. Uyterlinde
 links:
   - label: OpenReview
     url: https://openreview.net/forum?id=946cT3Jsq5
-draft: true
 ---
 
 Concept bottleneck models make a classifier interpretable by routing its prediction
@@ -16,5 +15,3 @@ and names them afterwards. We reproduced the method and tested whether its claim
 
 Published in Transactions on Machine Learning Research and presented at the ML
 Reproducibility Challenge (MLRC) at Princeton University.
-
-<!-- TODO: two or three sentences on what held up and what did not, and a code link. -->
