@@ -1,6 +1,5 @@
 ---
 title: "Revisiting Discover-then-Name Concept Bottleneck Models: A Reproducibility Study"
-summary: A reproducibility study of Discover-then-Name concept bottleneck models, published in TMLR and presented at the ML Reproducibility Challenge.
 year: 2025
 venue: TMLR
 authors: <strong>F. Byrman</strong>, E. Kasteleyn, B. Kuipers, D. Uyterlinde
