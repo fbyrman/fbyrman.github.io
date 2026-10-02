@@ -1,0 +1,8 @@
+{
+  "name": "hyperbolic-vlms-explainer",
+  "private": true,
+  "scripts": {
+    "build": "node build.js",
+    "watch": "node build.js --watch"
+  }
+}

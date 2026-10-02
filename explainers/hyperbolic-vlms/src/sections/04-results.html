@@ -1,0 +1,125 @@
+<section class="tex-section" id="sec-results">
+  <h2 class="sec-title"><span class="num">4</span> How hyperbolic are they?</h2>
+
+  <div class="tex-subsection" id="subsec-distortion">
+    <h3 class="subsec-title"><span class="num">4.1</span> Distance distortion</h3>
+
+    <p>
+      We trained MERU, HyCoCLIP, ARGENT and PHyCLIP on CC3M, about three million
+      image-caption pairs. All four start at curvature $c = 1$ and push it down to its
+      lower bound of $c = 0.1$ within the first tenth of training, while their embeddings
+      settle at radii between roughly 0.2 and 1.1. Figure 8 cuts the cube of Figure 7 at
+      each model's most common text radius and final curvature. In every panel, the
+      exponential map changes distances by less than 1%.
+    </p>
+
+    <figure class="xp-fig" id="fig-models">
+      <canvas class="xp-canvas landscape" width="860" height="330" data-role="canvas"
+        aria-label="The distance ratio over the image radius and the angle, for each of the four trained models, on one shared colour scale"></canvas>
+    </figure>
+    <p class="figure-caption">
+      <span class="figure-num">Figure 8.</span> The distance ratio between a text embedding
+      at the model's most common text radius $r_1$ and an image embedding at radius $r_2$,
+      at the converged curvature $c = 0.1$ (ViT-S/16; for PHyCLIP the mean over its 64
+      factors). All four panels share one colour scale.
+    </p>
+  </div>
+
+  <div class="tex-subsection" id="subsec-readout">
+    <h3 class="subsec-title"><span class="num">4.2</span> Removing the exponential map at inference</h3>
+
+    <p>
+      If the exponential map is close to the identity, removing it at read-out should go
+      unnoticed. To test this, we evaluate every trained model twice: once as usual, and
+      once with the exponential map deleted, so that images and captions are compared by
+      their Euclidean distance before the map. Table 1 shows that classification and
+      retrieval scores barely move, and do not even move in a consistent direction. The
+      publicly released MERU and HyCoCLIP checkpoints, trained on far more data, behave
+      the same way.
+    </p>
+
+    <p class="table-caption"><span class="table-num">Table 1.</span> Deleting the
+      exponential map at inference. Classification is the mean accuracy over sixteen
+      datasets, retrieval the mean recall over both directions, both datasets and both
+      cutoffs, in %. max |Δ| is the largest change on any single benchmark.</p>
+    <div class="table-scroll">
+    <table class="results">
+      <thead>
+        <tr class="groups">
+          <th></th><th></th>
+          <th class="bandA" colspan="4">Classification</th>
+          <th class="bandB" colspan="4">Retrieval</th>
+        </tr>
+        <tr>
+          <th class="model">Model</th><th class="model">Encoder</th>
+          <th class="bandA">With expm</th><th class="bandA">Without</th><th class="bandA">Δ</th><th class="bandA">max |Δ|</th>
+          <th class="bandB">With expm</th><th class="bandB">Without</th><th class="bandB">Δ</th><th class="bandB">max |Δ|</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="model" rowspan="2">MERU</td><td class="model">ViT-S/16</td><td>19.66</td><td>19.67</td><td>+0.01</td><td>0.20</td><td>44.81</td><td>44.83</td><td>+0.02</td><td>0.16</td></tr>
+        <tr><td class="model">ViT-B/16</td><td>22.22</td><td>22.23</td><td>+0.01</td><td>0.19</td><td>49.20</td><td>49.24</td><td>+0.03</td><td>0.26</td></tr>
+        <tr class="enc-first"><td class="model" rowspan="2">HyCoCLIP</td><td class="model">ViT-S/16</td><td>23.80</td><td>23.78</td><td>−0.02</td><td>0.11</td><td>50.09</td><td>50.11</td><td>+0.02</td><td>0.10</td></tr>
+        <tr><td class="model">ViT-B/16</td><td>25.02</td><td>25.01</td><td>−0.02</td><td>0.06</td><td>52.47</td><td>52.54</td><td>+0.07</td><td>0.30</td></tr>
+        <tr class="enc-first"><td class="model" rowspan="2">ARGENT</td><td class="model">ViT-S/16</td><td>22.99</td><td>22.95</td><td>−0.05</td><td>0.42</td><td>48.34</td><td>48.24</td><td>−0.10</td><td>0.70</td></tr>
+        <tr><td class="model">ViT-B/16</td><td>24.35</td><td>24.32</td><td>−0.03</td><td>0.39</td><td>52.57</td><td>52.56</td><td>−0.01</td><td>0.10</td></tr>
+        <tr class="enc-first"><td class="model" rowspan="2">PHyCLIP</td><td class="model">ViT-S/16</td><td>23.03</td><td>23.01</td><td>−0.03</td><td>0.37</td><td>49.34</td><td>49.24</td><td>−0.11</td><td>0.70</td></tr>
+        <tr><td class="model">ViT-B/16</td><td>25.06</td><td>24.97</td><td>−0.09</td><td>0.54</td><td>52.35</td><td>52.58</td><td>+0.23</td><td>0.46</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="tex-subsection" id="subsec-controls">
+    <h3 class="subsec-title"><span class="num">4.3</span> Training without the exponential map</h3>
+
+    <p>
+      That the map can be removed after training does not mean the curvature played no
+      role during training. To test this, we train a Euclidean control for every model
+      from scratch: the same losses, data and schedule, but with every operation computed
+      in Euclidean space and the exponential map replaced by the identity. The two runs
+      only differ in the first 10,000 or so steps, while the curvature is still on its way
+      down to its lower bound. From then on, their radii, losses and temperatures are
+      nearly identical, and so are their final scores (Table 2). The Euclidean controls
+      come out slightly ahead more often than not, but we do not read this as Euclidean
+      models being better: the point is how close the two are.
+    </p>
+
+    <p class="table-caption"><span class="table-num">Table 2.</span> Each objective in its
+      Euclidean ($\mathbb{E}^n$) and hyperbolic ($\mathbb{L}^n_c$) form. Classification and
+      retrieval as in Table 1; TIE, LCA, <i>J</i>, <i>P</i><sub>H</sub> and <i>R</i><sub>H</sub>
+      are hierarchical metrics on WordNet over ImageNet. The
+      <span class="best-key">shaded</span> cell marks the better geometry; ties are
+      unshaded.</p>
+    <div class="table-scroll">
+    <table class="results">
+      <thead>
+        <tr class="groups">
+          <th></th><th></th>
+          <th class="bandA" colspan="2">Classification</th>
+          <th class="bandA" colspan="2">Retrieval</th>
+          <th class="bandB" colspan="2">TIE (↓)</th>
+          <th class="bandB" colspan="2">LCA (↓)</th>
+          <th class="bandC" colspan="2"><i>J</i> (↑)</th>
+          <th class="bandC" colspan="2"><i>P</i><sub>H</sub> (↑)</th>
+          <th class="bandC" colspan="2"><i>R</i><sub>H</sub> (↑)</th>
+        </tr>
+        <tr>
+          <th class="model">Model</th><th class="model">Encoder</th>
+          <th class="bandA">𝔼<sup>n</sup></th><th class="bandA">𝕃<sup>n</sup><sub>c</sub></th><th class="bandA">𝔼<sup>n</sup></th><th class="bandA">𝕃<sup>n</sup><sub>c</sub></th><th class="bandB">𝔼<sup>n</sup></th><th class="bandB">𝕃<sup>n</sup><sub>c</sub></th><th class="bandB">𝔼<sup>n</sup></th><th class="bandB">𝕃<sup>n</sup><sub>c</sub></th><th class="bandC">𝔼<sup>n</sup></th><th class="bandC">𝕃<sup>n</sup><sub>c</sub></th><th class="bandC">𝔼<sup>n</sup></th><th class="bandC">𝕃<sup>n</sup><sub>c</sub></th><th class="bandC">𝔼<sup>n</sup></th><th class="bandC">𝕃<sup>n</sup><sub>c</sub></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="model" rowspan="2">MERU</td><td class="model">ViT-S/16</td><td class="best">19.8</td><td>19.7</td><td class="best">45.7</td><td>44.8</td><td class="best">6.440</td><td>6.582</td><td class="best">3.384</td><td>3.442</td><td class="best">0.605</td><td>0.596</td><td class="best">0.719</td><td>0.713</td><td class="best">0.719</td><td>0.711</td></tr>
+        <tr><td class="model">ViT-B/16</td><td class="best">22.5</td><td>22.2</td><td class="best">50.0</td><td>49.2</td><td class="best">6.091</td><td>6.220</td><td class="best">3.215</td><td>3.304</td><td class="best">0.626</td><td>0.621</td><td class="best">0.737</td><td>0.730</td><td class="best">0.735</td><td>0.732</td></tr>
+        <tr class="enc-first"><td class="model" rowspan="2">HyCoCLIP</td><td class="model">ViT-S/16</td><td>23.5</td><td class="best">23.8</td><td>47.0</td><td class="best">50.1</td><td>6.028</td><td class="best">5.851</td><td>3.180</td><td class="best">3.095</td><td>0.632</td><td class="best">0.641</td><td>0.740</td><td class="best">0.748</td><td>0.738</td><td class="best">0.747</td></tr>
+        <tr><td class="model">ViT-B/16</td><td class="best">25.9</td><td>25.0</td><td class="best">53.3</td><td>52.5</td><td class="best">5.514</td><td>5.719</td><td class="best">2.974</td><td>3.103</td><td class="best">0.664</td><td>0.652</td><td class="best">0.764</td><td>0.753</td><td class="best">0.764</td><td>0.757</td></tr>
+        <tr class="enc-first"><td class="model" rowspan="2">ARGENT</td><td class="model">ViT-S/16</td><td>22.7</td><td class="best">23.0</td><td class="best">49.6</td><td>48.3</td><td>5.963</td><td class="best">5.931</td><td class="best">3.130</td><td>3.132</td><td>0.634</td><td class="best">0.637</td><td>0.743</td><td class="best">0.746</td><td>0.740</td><td class="best">0.742</td></tr>
+        <tr><td class="model">ViT-B/16</td><td class="best">25.6</td><td>24.4</td><td class="best">53.0</td><td>52.6</td><td class="best">5.579</td><td>5.661</td><td class="best">3.026</td><td>3.079</td><td class="best">0.661</td><td>0.656</td><td class="best">0.761</td><td>0.757</td><td class="best">0.762</td><td>0.761</td></tr>
+        <tr class="enc-first"><td class="model" rowspan="2">PHyCLIP</td><td class="model">ViT-S/16</td><td class="best">23.5</td><td>23.0</td><td class="best">49.8</td><td>49.3</td><td class="best">5.920</td><td>5.998</td><td class="best">3.104</td><td>3.203</td><td class="best">0.636</td><td>0.633</td><td class="best">0.746</td><td>0.740</td><td>0.742</td><td>0.742</td></tr>
+        <tr><td class="model">ViT-B/16</td><td class="best">25.5</td><td>25.1</td><td class="best">53.5</td><td>52.3</td><td class="best">5.588</td><td>5.745</td><td class="best">3.001</td><td>3.122</td><td class="best">0.660</td><td>0.652</td><td class="best">0.760</td><td>0.752</td><td class="best">0.760</td><td>0.755</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,3184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How Hyperbolic Are Hyperbolic VLMs?</title>
+
+<!--
+  ============================================================================
+  GENERATED FILE: do not edit by hand. Edit the sources in
+  explainers/hyperbolic-vlms/src/ and run `npm run build` (or `node build.js`)
+  there.
+  ============================================================================
+  Sources:
+    src/template.html      this skeleton (head, hero, script order)
+    src/style.css          base styling shared with the ScaleGMN explainer;
+                           design tokens live in :root at the top
+    src/figures.css        styling for this page's interactive figures
+    src/sections/*.html    one <section class="tex-section"> per file, included
+                           in filename order; the TOC rebuilds itself from <h2>/<h3>
+    src/js/common.js       helpers shared by the figures (canvas, colour ramps)
+    src/js/geometry.js     Lorentz-model geometry and the three distortion ratios
+    src/img/*.jpg          photos, inlined as data URIs by build.js
+    src/js/fig-*.js        one script per interactive figure, each in its own
+                           <script> tag below so one failing figure cannot
+                           stop the others
+
+  Authoring conventions inside a section:
+    displayed math    <div class="equation" id="eq:label">\[ ... \]</div>
+                      (numbered automatically in document order)
+    reference         <span class="eqref" data-ref="eq:label"></span>  → "(n)"
+    inline math       $...$ anywhere in a paragraph
+    subsection        <div class="tex-subsection">…</div>
+  ============================================================================
+-->
+
+<!-- MathJax (math rendering, SVG output) -->
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$']],
+    displayMath: [['\\[', '\\]']],
+    macros: {
+      coloneqq: '\\mathrel{\\vcenter{:}}{=}',
+      argmax: '\\operatorname*{arg\\,max}',
+      argmin: '\\operatorname*{arg\\,min}'
+    }
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg-full.min.js"></script>
+
+<!-- Type -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  /* ---- palette (light) ---- */
+  --paper:      #F3F1EB;
+  --paper-raise:#EAE6DC;
+  --ink:        #1B1D22;
+  --ink-soft:   #55575F;
+  --rule:       #D8D3C6;
+  --accent:     #2E4373;   /* deep indigo — headings, links, rules */
+  --accent-soft:#5B729E;
+  --gold:       #B8863A;   /* equation numbers, small emphasis */
+  --eq-bg:      #FFFFFF;
+  --eq-bg-hit:  #FBF0D9;
+  --shadow:     0 1px 2px rgba(27,29,34,0.06);
+  --winner:     #F2E3B8;   /* results tables: best cell */
+  --bandA:      #E8ECF4;   /* results tables: column-group tints */
+  --bandB:      #EDE9DF;
+  --bandC:      #E6EEE6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:      #15161A;
+    --paper-raise:#1D1F25;
+    --ink:        #EDECE7;
+    --ink-soft:   #A7A9B2;
+    --rule:       #33353D;
+    --accent:     #8FA3D6;
+    --accent-soft:#6B7DA8;
+    --gold:       #E0B15E;
+    --eq-bg:      #1B1D24;
+    --eq-bg-hit:  #3A311C;
+    --shadow:     0 1px 2px rgba(0,0,0,0.35);
+    --winner:     #4A3D1E;
+    --bandA:      #232838;
+    --bandB:      #2A2822;
+    --bandC:      #222B24;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:      #15161A;
+  --paper-raise:#1D1F25;
+  --ink:        #EDECE7;
+  --ink-soft:   #A7A9B2;
+  --rule:       #33353D;
+  --accent:     #8FA3D6;
+  --accent-soft:#6B7DA8;
+  --gold:       #E0B15E;
+  --eq-bg:      #1B1D24;
+  --eq-bg-hit:  #3A311C;
+  --shadow:     0 1px 2px rgba(0,0,0,0.35);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+  font-size: 1.05rem;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+.sans { font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+
+/* ---------------- layout shell ---------------- */
+.shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 230px;
+  gap: 3.5rem;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .toc { display: none; }
+}
+
+/* ---------------- preface ---------------- */
+.preface { margin: 0 0 2.6rem; padding: 0 0 1.8rem; border-bottom: 1px solid var(--rule); }
+.preface p { font-size: 1.05rem; line-height: 1.6; }
+.preface p:last-child { margin-bottom: 0; }
+
+/* ---------------- header / hero ---------------- */
+header.hero {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 3.5rem 1.5rem 1.5rem;
+}
+.hero h1 {
+  font-size: clamp(2.2rem, 4.5vw, 3.4rem);
+  font-weight: 600;
+  line-height: 1.08;
+  margin: 0;
+  color: var(--ink);
+  max-width: 16ch;
+}
+
+/* ---------------- article ---------------- */
+article { min-width: 0; padding-bottom: 6rem; }
+
+.tex-section { margin-top: 3.6rem; }
+.tex-section:first-child, .preface + .tex-section { margin-top: 0; }
+
+h2.sec-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+  font-size: 1.65rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 1.4rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--rule);
+}
+h2.sec-title .num {
+  font-family: Inter, sans-serif;
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 1rem;
+}
+
+.tex-subsection { margin: 2.1rem 0 0; }
+h3.subsec-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 0.9rem;
+}
+h3.subsec-title .num {
+  font-family: Inter, sans-serif;
+  font-weight: 500;
+  color: var(--accent-soft);
+  font-size: 0.85rem;
+}
+
+p { margin: 0 0 1.05rem; max-width: 68ch; }
+p.placeholder { font-style: italic; color: var(--accent-soft); }
+ol.tex-list { margin: 0 0 1.05rem; padding-left: 1.6rem; max-width: 68ch; }
+ol.tex-list li { margin: 0 0 0.55rem; padding-left: 0.2rem; }
+ol.tex-list li::marker { color: var(--accent); font-weight: 600; }
+p:last-child { margin-bottom: 0; }
+
+strong.term { color: var(--accent); font-weight: 600; }
+
+/* ---------------- equations ---------------- */
+.equation {
+  position: relative;
+  background: var(--eq-bg);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  margin: 1.5rem 0 1.7rem;
+  padding: 1.35rem 4rem 1.35rem 1.6rem;
+  overflow-x: auto;
+  scroll-margin-top: 2rem;
+  transition: background 0.9s ease, border-color 0.4s ease;
+}
+.equation.flash { background: var(--eq-bg-hit); border-color: var(--gold); }
+.equation mjx-container { margin: 0 !important; }
+.equation .eq-num {
+  position: absolute;
+  right: 1.2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: Inter, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--gold);
+}
+
+.eqref {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--accent-soft);
+  cursor: pointer;
+  font-family: "Source Serif 4", serif;
+}
+.eqref:hover { color: var(--gold); border-color: var(--gold); }
+
+/* ---------------- table of contents ---------------- */
+.toc {
+  position: sticky;
+  top: 2.5rem;
+  padding-top: 0.3rem;
+  font-family: Inter, sans-serif;
+}
+.toc-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin: 0 0 0.9rem;
+}
+.toc ol { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--rule); }
+.toc li { margin: 0; }
+.toc a {
+  display: block;
+  padding: 0.32rem 0 0.32rem 0.9rem;
+  margin-left: -1px;
+  border-left: 1px solid transparent;
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+  text-decoration: none;
+  line-height: 1.35;
+}
+.toc a:hover { color: var(--accent); }
+.toc a.active { color: var(--accent); border-left-color: var(--accent); font-weight: 500; }
+.toc ol ol a { padding-left: 1.7rem; font-size: 0.82rem; }
+
+/* ---------------- interactive diagrams ---------------- */
+.diagram-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.4rem;
+  margin: 1.7rem 0 1.9rem;
+}
+@media (max-width: 640px) {
+  .diagram-grid { grid-template-columns: 1fr; }
+}
+.diagram-panel {
+  background: var(--eq-bg);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  padding: 1rem 1.1rem 1.2rem;
+}
+.diagram-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin: 0 0 0.6rem;
+}
+.diagram-reset {
+  font-family: Inter, sans-serif;
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  white-space: nowrap;
+}
+.diagram-reset:hover { color: var(--accent); }
+
+.diagram-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: var(--paper-raise);
+  border-radius: 3px;
+  touch-action: none;
+}
+.diagram-svg .line { stroke-width: 1.5; fill: none; }
+.diagram-svg .pt { cursor: grab; }
+.diagram-svg .pt:active { cursor: grabbing; }
+.diagram-svg .pt.is-fixed { cursor: default; }
+.diagram-svg .pt-label {
+  font-family: "Source Serif 4", serif;
+  font-weight: 700;
+  font-style: italic;
+  font-size: 15px;
+  fill: var(--ink);
+  text-anchor: middle;
+  pointer-events: none;
+}
+.diagram-svg .pt-label.is-origin {
+  font-family: Inter, sans-serif;
+  font-weight: 600;
+  font-style: normal;
+  font-size: 12px;
+  fill: var(--ink-soft);
+}
+
+.legend-panel .diagram-head { justify-content: space-between; flex-wrap: wrap; gap: 0.6rem; }
+.diagram-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1.1rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+.diagram-legend .var {
+  font-family: "Source Serif 4", serif;
+  font-weight: 700;
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+.diagram-legend sub { font-family: "Source Serif 4", serif; font-weight: 700; color: var(--ink); }
+
+.readout {
+  margin-top: 0.9rem;
+  font-family: "Source Serif 4", serif;
+  font-size: 0.92rem;
+}
+.readout-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.22rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.readout-row.result {
+  margin-top: 0.15rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--rule);
+  border-bottom: none;
+  font-weight: 600;
+}
+.readout-row.result .rv { color: var(--gold); }
+.rk .var { font-weight: 700; font-style: italic; }
+.rv { font-variant-numeric: tabular-nums; color: var(--ink); }
+
+/* ---------------- single diagram + ratio gauge ---------------- */
+.diagram-single { max-width: 460px; }
+
+.gauge {
+  margin-top: 0.7rem;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--rule);
+  overflow: hidden;
+}
+.gauge-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--gold);
+  border-radius: 3px;
+  transition: width 0.15s ease;
+}
+
+/* ---------------- tree diagram ---------------- */
+.tree-svg .tree-edge { stroke: var(--rule); stroke-width: 2; }
+.tree-svg .tree-reach { stroke: var(--accent); stroke-width: 3; stroke-linecap: round; opacity: 0.55; }
+.tree-svg .tree-trunk { stroke: var(--gold); stroke-width: 6; stroke-linecap: round; }
+.tree-svg .tree-node {
+  fill: var(--eq-bg);
+  stroke: var(--ink-soft);
+  stroke-width: 1.5;
+  cursor: pointer;
+}
+.tree-svg .tree-node:hover { stroke: var(--accent); }
+.tree-svg .tree-node.is-root { fill: var(--paper-raise); stroke: var(--ink-soft); cursor: default; }
+.tree-svg .tree-node.is-x { fill: var(--accent); stroke: var(--accent); }
+.tree-svg .tree-node.is-y { fill: var(--accent-soft); stroke: var(--accent-soft); }
+.tree-svg .tree-label {
+  font-family: "Source Serif 4", serif;
+  font-weight: 700;
+  font-style: italic;
+  font-size: 13px;
+  fill: var(--ink);
+  text-anchor: middle;
+  pointer-events: none;
+}
+.tree-svg .tree-label.is-root {
+  font-family: Inter, sans-serif;
+  font-weight: 600;
+  font-style: normal;
+  fill: var(--ink-soft);
+}
+
+/* ---------------- hyperbolic loss landscape ---------------- */
+.diagram-single.hyp-panel { max-width: 860px; }
+.hyp-panel .diagram-head { justify-content: space-between; flex-wrap: wrap; gap: 0.6rem; }
+.curvature-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+.curvature-control .var { font-style: italic; font-weight: 700; }
+.curvature-control input[type="range"] { width: 110px; accent-color: var(--accent); }
+.curvature-control span[id$="-val"] {
+  font-variant-numeric: tabular-nums;
+  min-width: 3.2em;
+  text-align: right;
+}
+.hyp-canvas {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  display: block;
+  border-radius: 3px;
+  background: var(--paper-raise);
+  touch-action: none;
+  cursor: grab;
+}
+.hyp-canvas:active { cursor: grabbing; }
+
+/* ---------------- power ratio plot ---------------- */
+.diagram-single.power-panel { max-width: 860px; }
+.power-panel .diagram-head { justify-content: space-between; flex-wrap: wrap; gap: 0.6rem; }
+.power-svg { aspect-ratio: 860 / 460; cursor: crosshair; }
+.power-svg .axis { stroke: var(--ink-soft); stroke-width: 1.2; fill: none; }
+.power-svg .grid { stroke: var(--rule); stroke-width: 1; fill: none; }
+.power-svg .tick-label {
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  fill: var(--ink-soft);
+}
+.power-svg .axis-label {
+  font-family: "Source Serif 4", serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 15px;
+  fill: var(--ink);
+}
+.power-svg .ghost { stroke: var(--accent-soft); stroke-width: 1.2; fill: none; opacity: 0.45; }
+.power-svg .ghost-label {
+  font-family: Inter, sans-serif;
+  font-size: 11px;
+  fill: var(--accent-soft);
+  opacity: 0.85;
+}
+.power-svg .curve { stroke: var(--accent); stroke-width: 2.4; fill: none; }
+.power-svg .tangent { stroke: var(--gold); stroke-width: 1.6; stroke-dasharray: 6 4; fill: none; }
+.power-svg .drop { stroke: var(--rule); stroke-width: 1; stroke-dasharray: 3 3; fill: none; }
+.power-svg .marker { fill: var(--gold); stroke: var(--eq-bg); stroke-width: 2; }
+
+.legend { margin-top: 1.1rem; }
+.legend-caption {
+  font-family: Inter, sans-serif;
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  margin: 0 0 0.4rem;
+}
+.legend-caption .var { font-style: italic; font-weight: 700; }
+.swatch-zero {
+  display: inline-block;
+  width: 1.7em;
+  height: 0.8em;
+  margin: 0 0.3em 0 0;
+  vertical-align: -0.1em;
+  border-radius: 2px;
+  background: repeating-linear-gradient(45deg, #440154 0 3px, #9680aa 3px 5px);
+}
+.legend-bar { width: 100%; height: 14px; display: block; border-radius: 3px; box-shadow: 0 0 0 1px var(--rule); }
+.legend-ticks {
+  position: relative;
+  height: 1.5rem;
+  margin-top: 0.3rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+}
+.legend-tick {
+  position: absolute;
+  top: 0.35rem;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.legend-tick::before {
+  content: "";
+  position: absolute;
+  top: -0.35rem;
+  left: 50%;
+  width: 1px;
+  height: 0.3rem;
+  background: var(--rule);
+  transform: translateX(-50%);
+}
+
+/* ---------------- results tables ---------------- */
+.figure-caption {
+  font-family: Inter, sans-serif;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin: 0.55rem 0 1.6rem;
+}
+.figure-caption .figure-num { font-weight: 600; color: var(--ink); }
+
+.table-caption {
+  max-width: none;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  margin: 2rem 0 0.7rem;
+}
+.table-caption .table-num { font-weight: 600; color: var(--ink); }
+.table-caption .best-key { background: var(--winner); color: var(--ink); padding: 0 0.3em; border-radius: 2px; }
+.table-scroll { overflow-x: auto; margin: 0 0 1.4rem; }
+table.results {
+  border-collapse: collapse;
+  font-family: Inter, sans-serif;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+  border-top: 1.5px solid var(--ink);
+  border-bottom: 1.5px solid var(--ink);
+}
+table.results th, table.results td { padding: 0.3rem 0.5rem; text-align: center; }
+table.results th { font-weight: 500; }
+table.results thead { border-bottom: 1px solid var(--ink); }
+table.results thead tr.groups th { padding-bottom: 0.2rem; }
+table.results tr.enc td { text-align: left; padding-top: 0.45rem; color: var(--ink-soft); }
+table.results tr.enc:not(:first-child) td { border-top: 1px solid var(--rule); }
+table.results tr.sup td { text-align: left; padding: 0.35rem 0.5rem 0.15rem 1.1rem; font-size: 0.85em; color: var(--ink-soft); }
+table.results td.model, table.results th.model { text-align: left; }
+table.results td.best { background: var(--winner); font-weight: 600; }
+table.results .bandA { background: var(--bandA); }
+table.results .bandB { background: var(--bandB); }
+table.results .bandC { background: var(--bandC); }
+table.results th.rot { vertical-align: bottom; height: 6.2rem; padding-bottom: 0.4rem; }
+table.results th.rot span { writing-mode: vertical-rl; transform: rotate(180deg); display: inline-block; }
+.ro { font-family: "Source Serif 4", serif; font-size: 0.85rem; }
+
+/* ---------------- tokens added for this page ---------------- */
+:root {
+  /* The two points of Figure 2: the cone apex (text) and its partner (image).
+     Validated for colour-blind separation against --eq-bg in both modes. */
+  --c-p1:     #1F5FAE;
+  --c-p2:     #C0632A;
+  /* Diverging ramp for ratio maps: below 1, exactly 1, above 1. */
+  --div-lo:   #2A5FA8;
+  --div-mid:  #F2F0EA;
+  --div-hi:   #B5562A;
+  /* The three image-caption pairs of Figures 1 and 2 (validated all-pairs;
+     every point also carries a direct label). */
+  --pair-1:   #2A6BC4;
+  --pair-2:   #C0632A;
+  --pair-3:   #178F66;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --c-p1:     #5A8ED8;
+    --c-p2:     #C8733C;
+    --div-lo:   #6A9AE0;
+    --div-mid:  #24262D;
+    --div-hi:   #E08A55;
+    --pair-1:   #5A8ED8;
+    --pair-2:   #C8733C;
+    --pair-3:   #2BA87B;
+  }
+}
+:root[data-theme="dark"] {
+  --c-p1:     #5A8ED8;
+  --c-p2:     #C8733C;
+  --div-lo:   #6A9AE0;
+  --div-mid:  #24262D;
+  --div-hi:   #E08A55;
+  --pair-1:   #5A8ED8;
+  --pair-2:   #C8733C;
+  --pair-3:   #2BA87B;
+}
+
+/* ---------------- hero additions ---------------- */
+.hero .back { margin: 0 0 1.2rem; font-size: 0.85rem; }
+.hero .back a { color: var(--ink-soft); text-decoration: none; }
+.hero .back a:hover { color: var(--accent); }
+/* A paper title is longer than the Gromov hero expects: smaller and wider. */
+.hero h1.paper-title {
+  font-size: clamp(1.8rem, 3.4vw, 2.6rem);
+  line-height: 1.15;
+  max-width: 30ch;
+}
+.hero .authors {
+  margin: 1.1rem 0 0;
+  font-size: 1.1rem;
+  color: var(--ink);
+}
+.hero .authors .me { font-weight: 700; }
+.hero .venue {
+  margin: 0.4rem 0 2.6rem;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+.hero .venue a { color: var(--accent); }
+
+/* ---------------- interactive figures ---------------- */
+.xp-fig {
+  background: var(--eq-bg);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  padding: 1rem 1.1rem 1.1rem;
+  margin: 1.7rem 0 0;
+}
+.xp-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.2rem;
+  margin: 0 0 0.8rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+.xp-controls .var { font-family: "Source Serif 4", serif; font-style: italic; font-weight: 700; color: var(--ink); }
+.xp-controls label { display: inline-flex; align-items: center; gap: 0.5rem; }
+.xp-controls input[type="range"] { width: 120px; accent-color: var(--accent); }
+.xp-controls output { font-variant-numeric: tabular-nums; min-width: 2.6em; color: var(--ink); }
+.xp-btn {
+  font-family: Inter, sans-serif;
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+.xp-btn:hover { color: var(--accent); }
+
+.xp-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 3px;
+  background: var(--paper-raise);
+  touch-action: none;
+}
+.xp-canvas.landscape { cursor: crosshair; }
+
+.xp-readout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem 1.4rem;
+  margin-top: 0.8rem;
+  font-family: "Source Serif 4", serif;
+  font-size: 0.92rem;
+}
+.xp-readout.three { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 640px) { .xp-readout, .xp-readout.three { grid-template-columns: 1fr; } }
+.xp-readout .cell {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.22rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.xp-readout .cell .rk { flex: 1; white-space: nowrap; }
+.xp-readout .cell .rv { font-variant-numeric: tabular-nums; }
+.xp-readout .cell .rv.soft { color: var(--ink-soft); }
+.xp-readout .swatch { width: 9px; height: 9px; border-radius: 50%; align-self: center; }
+.xp-readout .meta .swatch { background: var(--c-meta); }
+.xp-readout .sgd .swatch { background: var(--c-sgd); }
+
+.xp-seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.xp-seg button {
+  font-family: Inter, sans-serif;
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  padding: 0.2rem 0.65rem;
+  cursor: pointer;
+}
+.xp-seg button + button { border-left: 1px solid var(--rule); }
+.xp-seg button[aria-checked="true"] { background: var(--paper-raise); color: var(--ink); }
+.xp-controls .check { gap: 0.4rem; }
+.xp-controls .check input { accent-color: var(--accent); margin: 0; }
+/* Citations, links and references */
+a.cite { color: var(--accent); text-decoration: none; border-bottom: 1px dotted var(--accent-soft); }
+a.cite:hover { color: var(--gold); border-color: var(--gold); }
+.xp-refs li:target { background: var(--eq-bg-hit); border-radius: 3px; }
+.xp-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.9rem; margin: 0 0 1.6rem; max-width: 42rem; }
+@media (max-width: 640px) { .xp-links { grid-template-columns: 1fr; } }
+.xp-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.8rem 1rem;
+  background: var(--eq-bg);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+.xp-link:hover { border-color: var(--accent); }
+.xp-link-kind { font-family: Inter, sans-serif; font-size: 0.72rem; font-weight: 600; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; }
+.xp-link-title { font-family: "Source Serif 4", serif; font-size: 1.05rem; color: var(--accent); }
+.xp-refs { padding-left: 1.4rem; max-width: 42rem; font-size: 0.92rem; line-height: 1.55; }
+.xp-refs li { margin: 0 0 0.6rem; padding: 0.1rem 0.3rem; }
+.xp-refs li::marker { color: var(--ink-soft); font-family: Inter, sans-serif; font-size: 0.8rem; }
+.xp-refs a { color: var(--accent); }
+
+/* Figures 6-8: plane and hyperboloid side by side */
+.xp-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
+@media (max-width: 640px) { .xp-pair { grid-template-columns: 1fr; } }
+.xp-pane-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0 0 0.35rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+.xp-pane-label .space { font-family: "Source Serif 4", serif; font-size: 1rem; color: var(--ink); }
+.xp-canvas.rotate { cursor: grab; }
+.xp-canvas.rotate:active, .xp-canvas.is-dragging { cursor: grabbing; }
+.xp-presets { display: inline-flex; gap: 0.9rem; }
+
+
+/* Results tables: one block of rows per model */
+table.results tr.enc-first td { border-top: 1px solid var(--rule); }
+table.results td.model[rowspan] { vertical-align: top; padding-top: 0.3rem; }
+
+/* Figure 1: contrastive pre-training diagram */
+.xp-svg .cl-panel { fill: var(--paper-raise); stroke: var(--rule); }
+.xp-svg .cl-caption { font-family: "Source Serif 4", serif; font-style: italic; font-size: 15px; fill: var(--ink-soft); }
+.xp-svg .cl-caption.is-hi { fill: var(--ink); font-weight: 700; }
+.xp-svg .cl-encoder { fill: var(--paper-raise); stroke: var(--ink-soft); stroke-width: 1.2px; }
+.xp-svg .cl-encoder-label { font-family: Inter, sans-serif; font-weight: 600; font-size: 14px; fill: var(--ink); }
+.xp-svg .cl-arrow { stroke: var(--ink-soft); stroke-width: 1.4px; }
+.xp-svg .cl-head { fill: var(--ink-soft); }
+.xp-svg .cl-vbox { fill: var(--eq-bg); stroke: var(--rule); stroke-width: 1.2px; }
+.xp-svg .cl-vbox.is-hi, .xp-svg .cl-tile.is-hi { stroke: var(--accent); stroke-width: 2.4px; }
+.xp-svg .cl-vec { font-family: "Source Serif 4", serif; font-style: italic; font-weight: 700; font-size: 15px; fill: var(--ink); pointer-events: none; }
+.xp-svg .cl-tile { fill: none; stroke: var(--rule); stroke-width: 1.2px; }
+.xp-svg .cl-cell rect { fill: var(--paper-raise); stroke: var(--rule); stroke-width: 1px; }
+.xp-svg .cl-cell.is-diag rect { fill: var(--eq-bg-hit); stroke: var(--gold); stroke-width: 1.6px; }
+.xp-svg .cl-cell.is-hi rect { stroke: var(--accent); stroke-width: 2.6px; }
+.xp-svg .cl-cell text { font-family: "Source Serif 4", serif; font-style: italic; font-size: 14px; fill: var(--ink); pointer-events: none; }
+.xp-svg .cl-cell { cursor: default; }
+.xp-svg .cl-info-head { font-family: Inter, sans-serif; font-weight: 600; font-size: 14px; fill: var(--ink); }
+.xp-svg .cl-info { font-family: "Source Serif 4", serif; font-size: 15px; fill: var(--ink-soft); }
+
+/* Figure 2: contrastive learning on a circle */
+.xp-svg .ct-rim { fill: none; stroke: var(--ink-soft); stroke-width: 1.2px; }
+.xp-svg .ct-wire { fill: none; stroke: var(--ink-soft); stroke-width: 1px; stroke-opacity: 0.35; }
+.xp-svg .ct-wire.is-back { stroke-opacity: 0.12; stroke-dasharray: 2 3; }
+.xp-svg .ct-point.is-back { opacity: 0.35; }
+.xp-svg .ct-origin { fill: var(--ink-soft); }
+.xp-svg .ct-title { font-family: Inter, sans-serif; font-size: 12px; font-weight: 600; fill: var(--ink-soft); }
+.xp-svg .ct-vec { stroke-width: 1.2px; stroke-opacity: 0.45; }
+.xp-svg .ct-ring { fill: none; stroke-width: 3px; }
+.xp-svg .ct-square { stroke: var(--eq-bg); stroke-width: 2px; }
+.xp-svg .ct-word { font-family: "Source Serif 4", serif; font-style: italic; font-size: 14px; fill: var(--ink); }
+.xp-svg .ct-cell-bg { fill: var(--paper-raise); }
+.xp-svg .ct-cell { fill: var(--accent); }
+.xp-svg .ct-diag { fill: none; stroke: var(--gold); stroke-width: 2px; }
+.xp-svg .ct-val { font-family: Inter, sans-serif; font-size: 13px; font-variant-numeric: tabular-nums; fill: var(--ink); }
+.xp-svg .ct-val.on-dark { fill: var(--eq-bg); font-weight: 600; }
+#fig-contrast svg { touch-action: none; }
+
+/* Figure 3: a hierarchy across modalities */
+.xp-svg .tr-axis { stroke: var(--rule); stroke-width: 2px; }
+.xp-svg .tr-axis-head { fill: var(--rule); }
+.xp-svg .tr-axis-label { font-family: Inter, sans-serif; font-size: 11.5px; fill: var(--ink-soft); }
+.xp-svg .tr-edge { stroke: var(--ink-soft); stroke-width: 1.4px; stroke-opacity: 0.5; }
+.xp-svg .tr-edge.is-hi { stroke: var(--accent); stroke-width: 2.6px; stroke-opacity: 1; }
+.xp-svg .tr-pill { fill: var(--eq-bg); stroke: var(--rule); stroke-width: 1.2px; }
+.xp-svg .tr-node.is-hi .tr-pill, .xp-svg .tr-node.is-hi .tr-frame { stroke: var(--accent); stroke-width: 2.4px; }
+.xp-svg .tr-node.is-dim { opacity: 0.4; }
+.xp-svg .tr-frame { fill: none; stroke: var(--rule); stroke-width: 1.2px; }
+.xp-svg .tr-word { font-family: "Source Serif 4", serif; font-weight: 600; font-size: 15px; fill: var(--ink); }
+.xp-svg .tr-caption { font-family: "Source Serif 4", serif; font-style: italic; font-size: 14px; fill: var(--ink); }
+.xp-svg .tr-node { cursor: default; }
+
+/* Figure 4: a tree in the Poincaré disk */
+.xp-svg .pd-bg { fill: var(--paper-raise); }
+.xp-svg .pd-rim { fill: none; stroke: var(--ink-soft); stroke-width: 1.4px; }
+.xp-svg .pd-edge { fill: none; stroke: var(--ink-soft); stroke-width: 1.1px; stroke-opacity: 0.8; }
+.xp-svg .pd-node { fill: var(--accent); stroke: var(--eq-bg); stroke-width: 0.8px; }
+.xp-svg .pd-node.is-focus { fill: var(--gold); }
+
+/* Figure 5: the exponential map */
+.xp-svg .lf-band { fill: var(--paper-raise); }
+.xp-svg .lf-band.is-hyp { fill: var(--eq-bg-hit); }
+.xp-svg .lf-band-label { font-family: Inter, sans-serif; font-size: 11px; font-weight: 600; fill: var(--ink-soft); letter-spacing: 0.04em; }
+.xp-svg .lf-exp { fill: var(--eq-bg-hit); stroke: var(--gold); stroke-width: 1.6px; }
+
+/* Figure 6: one row per operation */
+.op-row + .op-row { margin-top: 1.4rem; padding-top: 1.1rem; border-top: 1px solid var(--rule); }
+.op-row-title { margin: 0 0 0.5rem; font-family: Inter, sans-serif; font-size: 0.82rem; font-weight: 600; color: var(--ink); }
+.op-row + .op-row .xp-pane-label { display: none; }   /* column headings only above the first row */
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <p class="back sans"><a href="/research/">← Freek Byrman, research</a></p>
+  <h1 class="paper-title">How Hyperbolic Are Hyperbolic Vision-Language Models?</h1>
+  <p class="authors"><span class="me">F. Byrman</span>, P. Das, S. Verdenius, P. Mettes</p>
+  <p class="venue sans">NeurIPS 2026 NeurReps Workshop, Proceedings Track</p>
+</header>
+
+<div class="shell">
+  <article>
+
+<section class="tex-section" id="sec-background">
+  <h2 class="sec-title"><span class="num">1</span> Background</h2>
+
+  <div class="tex-subsection" id="subsec-clip">
+    <h3 class="subsec-title"><span class="num">1.1</span> Learning from images and captions</h3>
+
+    <p>
+      One of the most influential papers in recent AI is CLIP
+      (<a class="cite" href="#ref-radford2021">Radford et al., 2021</a>). Its insight: the internet is
+      full of images that come with a caption, and that pairing can be used as a powerful
+      training signal. An <strong class="term">image encoder</strong>
+      and a <strong class="term">text encoder</strong> map their inputs into one shared
+      <strong class="term">latent space</strong>, and the model is rewarded for placing each
+      image closer to its own caption than to all the mismatched ones.
+    </p>
+
+    <figure class="xp-fig" id="fig-clip">
+      <svg class="xp-svg" viewBox="0 0 860 400" role="img"
+        aria-label="Captions go through a text encoder and images through an image encoder; every image vector is compared with every text vector in a similarity matrix whose diagonal holds the matching pairs"></svg>
+    </figure>
+    <p class="figure-caption">
+      <span class="figure-num">Figure 1.</span> Contrastive pre-training on a batch of
+      three pairs. Each image vector $I_i$ is compared with each text vector $T_j$. The
+      highlighted cells on the diagonal are the true pairs, whose similarity should go up; every
+      other cell is a mismatch, whose similarity should go down. Hover over a cell to see
+      which image and caption it compares.
+    </p>
+
+    <p>
+      Training is a matching game. For a batch of $N$ pairs, every image is asked which of
+      the $N$ captions is its own, and every caption which image. The
+      <strong class="term">contrastive loss</strong> is low only when each one picks its
+      true partner. It never says where things should go, only how they should relate. Try
+      it in Figure 2: press <em>Train</em> and watch the matching pairs find each other on
+      the sphere while the different pairs spread as far apart as they can.
+    </p>
+
+    <figure class="xp-fig" id="fig-contrast">
+      <div class="xp-controls">
+        <button type="button" class="xp-btn" data-role="train">Train</button>
+        <button type="button" class="xp-btn" data-role="shuffle">Shuffle</button>
+        <span class="xp-hint">drag a point to move it, or the sphere to rotate it</span>
+      </div>
+      <svg class="xp-svg" viewBox="0 0 860 380" role="group"
+        aria-label="Three images and three captions as points on a sphere, next to their similarity matrix"></svg>
+      <div class="xp-readout three">
+        <div class="cell"><span class="rk">training steps</span><span class="rv" data-role="steps"></span></div>
+        <div class="cell"><span class="rk">contrastive loss</span><span class="rv" data-role="loss"></span></div>
+        <div class="cell"><span class="rk">images matched</span><span class="rv" data-role="acc"></span></div>
+      </div>
+    </figure>
+    <p class="figure-caption">
+      <span class="figure-num">Figure 2.</span> A three-dimensional latent space. Squares
+      are image embeddings, rings are caption embeddings, and each pair shares a colour.
+      The matrix on the right shows the cosine similarity of every image with every
+      caption; training drives the diagonal to 1. The loss uses a temperature of
+      $\tau = 0.3$.
+    </p>
+
+    <p>
+      Real models do the same with hundreds of dimensions and batches of tens of thousands
+      of pairs, and what comes out is a space organized by meaning. That makes
+      <strong class="term">zero-shot classification</strong> possible: write a caption per
+      class, <em>“a photo of a dog”</em>, and pick the one closest to the image.
+      <strong class="term">Retrieval</strong> works the same way in either direction: embed
+      a text query and return the closest images, or embed an image and return the
+      closest captions.
+    </p>
+  </div>
+
+  <div class="tex-subsection" id="subsec-hyperbolic">
+    <h3 class="subsec-title"><span class="num">1.2</span> Hierarchies and hyperbolic space</h3>
+
+    <p>
+      A recurring lesson in machine learning is that models built to match the structure
+      of their data learn more from less. The space in which a model embeds its data is one
+      such design choice, and CLIP chose the unit sphere. On a sphere every embedding has
+      the same length, so all meaning has to live in its direction. That is enough to tell
+      whether a caption belongs to an image, but not whether one concept is more general
+      than another. And vision-language data arguably has that ordering: <em>animal</em> is
+      more general than <em>dog</em>, and a caption more general than the image it
+      describes.
+    </p>
+
+    <figure class="xp-fig" id="fig-tree">
+      <svg class="xp-svg" viewBox="0 0 860 400" role="img"
+        aria-label="A tree from general to specific: thing, then animal and vehicle, then dog, cat and car, then a caption for each, then a photo for each"></svg>
+    </figure>
+    <p class="figure-caption">
+      <span class="figure-num">Figure 3.</span> Vision-language data read as a hierarchy,
+      from general words down to specific images. Hover over a node to see everything it falls under.
+    </p>
+
+    <p>
+      If the data is organized this way, the obvious first step is to drop the
+      normalization and use all of Euclidean space, letting the distance from the origin
+      express how general something is. But trees fit poorly there. The number of nodes
+      multiplies with every level, while the room at a given distance from the origin only
+      grows in proportion to that distance, so deep levels get squeezed together. In
+      <strong class="term">hyperbolic space</strong> that room grows exponentially, as fast
+      as a tree branches. Figure 4 shows a tree in the Poincaré disk, a map of the entire
+      hyperbolic plane onto a disc. All edges have the same length; they only look shorter
+      near the rim, where the map squeezes in ever more space.
+    </p>
+
+    <figure class="xp-fig" id="fig-disk">
+      <div class="xp-controls">
+        <label>depth
+          <input type="range" min="1" max="7" step="1" value="6" data-role="depth">
+          <output data-role="depth-val">6</output>
+        </label>
+      </div>
+      <svg class="xp-svg" viewBox="0 0 860 450" role="img"
+        aria-label="A tree in the Poincaré disk with edges of equal hyperbolic length; clicking a node moves it to the centre"></svg>
+    </figure>
+    <p class="figure-caption">
+      <span class="figure-num">Figure 4.</span> A binary tree in the Poincaré disk, with
+      every edge of hyperbolic length 1. Click a node to move it to the centre. The move
+      preserves all lengths, and the tree looks the same from every node.
+    </p>
+
+    <p>
+      This is the idea behind <strong class="term">hyperbolic vision-language
+      models</strong> such as MERU (<a class="cite" href="#ref-desai2023">Desai et al., 2023</a>),
+      HyCoCLIP (<a class="cite" href="#ref-pal2025">Pal et al., 2025</a>), ARGENT
+      (<a class="cite" href="#ref-huynh2026">Huynh et al., 2026</a>) and PHyCLIP
+      (<a class="cite" href="#ref-yoshikawa2026">Yoshikawa and Matsubara, 2026</a>). They keep
+      CLIP's recipe but embed images and text in hyperbolic space, with general concepts
+      near the origin and specific ones further out. The encoders themselves are still
+      ordinary Euclidean networks, though. Their outputs only reach hyperbolic space at the
+      very end, through a single <strong class="term">exponential map</strong>, shown in
+      Figure 5.
+    </p>
+
+    <figure class="xp-fig" id="fig-lift">
+      <svg class="xp-svg" viewBox="0 0 860 140" role="img" data-role="pipeline"
+        aria-label="An image and a caption pass through Euclidean encoders to vectors v, which the exponential map carries to points x on the hyperbolic manifold"></svg>
+      <div class="xp-controls" style="margin-top: 0.9rem">
+        <label><span>length ‖<span class="var">v</span>‖</span>
+          <input type="range" min="0" max="2" step="0.01" value="1.4" data-role="r">
+          <output data-role="r-val">1.40</output>
+        </label>
+        <label>direction
+          <input type="range" min="0" max="359" step="1" value="35" data-role="dir">
+          <output data-role="dir-val">35°</output>
+        </label>
+        <span class="xp-hint">drag to rotate</span>
+      </div>
+      <canvas class="xp-canvas rotate" width="860" height="400" data-role="scene"
+        aria-label="The tangent plane touching the hyperboloid at its origin, with a vector v in the plane and its image x on the hyperboloid"></canvas>
+    </figure>
+    <p class="figure-caption">
+      <span class="figure-num">Figure 5.</span> The exponential map, the one hyperbolic
+      step in the model. An encoder output $\mathbf{v}$ (blue) lies in the flat plane that
+      touches the hyperboloid at its origin. The map walks the same distance in the same
+      direction along the surface, landing at $\mathbf{x}$ (orange). Shorten $\mathbf{v}$
+      and see how little the map then changes: near the origin the surface is almost flat.
+    </p>
+  </div>
+</section>
+
+<section class="tex-section" id="sec-motivation">
+  <h2 class="sec-title"><span class="num">2</span> Motivation</h2>
+
+  <p>
+    Thanks to strong zero-shot classification and retrieval results, hyperbolic VLMs
+    have taken off quickly. Their embedding space is also easy to read, with general
+    concepts near the origin and specific ones further out, and new papers keep refining
+    the losses and pushing the benchmarks. But being hyperbolic is a matter of degree.
+    Curvature sets a length scale, and how much of the geometry a model actually uses
+    depends on where its embeddings sit relative to that scale. Both are learned, so
+    nothing forces a model to go far enough out for the curvature to matter. If we want to
+    explain why these models work, we need to know how hyperbolic they really are, a
+    question that has so far received little attention. That is what our new paper does, by looking at
+    the exponential map: the one place where curvature enters an otherwise Euclidean
+    network.
+  </p>
+</section>
+
+<section class="tex-section" id="sec-quantify">
+  <h2 class="sec-title"><span class="num">3</span> How to quantify hyperbolicity</h2>
+
+  <p>
+    So how do you measure how hyperbolic a model is? The curvature alone does not tell
+    you much. What matters is how curved the space is where the embeddings actually end
+    up. And since the curvature only enters through the exponential map, the most direct
+    test is to compare what the model computes just before that map with what it computes
+    just after it.
+  </p>
+
+  <p>
+    Hyperbolic VLMs build their losses out of three geometric operations: the
+    <strong class="term">distance</strong> between two embeddings, and the
+    <strong class="term">exterior angle</strong> and <strong class="term">half-aperture</strong>
+    of the entailment cones that encode the hierarchy. Figure 6 shows each one before and
+    after the map; the ratio between the two tells you how much the map changed it.
+  </p>
+
+  <figure class="xp-fig" id="fig-ops">
+    <div class="xp-controls">
+      <label>curvature <span class="var">c</span>
+        <input type="range" min="-1.301" max="0.477" step="0.001" value="0" data-role="c">
+        <output data-role="c-val">1.0</output>
+      </label>
+      <button type="button" class="xp-btn" data-role="reset">Reset</button>
+    </div>
+    <div class="op-row" data-op="dist">
+      <p class="op-row-title">Distance</p>
+      <div class="xp-pair">
+        <div>
+          <p class="xp-pane-label"><span class="space">$\mathbb{R}^2$, before the map</span><span>drag the points</span></p>
+          <canvas class="xp-canvas" width="420" height="420" data-role="plane"
+            aria-label="Two points and the distance between them in the Euclidean plane"></canvas>
+        </div>
+        <div>
+          <p class="xp-pane-label"><span class="space">$\mathbb{L}^2_c$, after the map</span><span>drag to rotate</span></p>
+          <canvas class="xp-canvas rotate" width="420" height="420" data-role="hyp"
+            aria-label="Two points and the distance between them on the hyperboloid"></canvas>
+        </div>
+      </div>
+      <div class="xp-readout three">
+        <div class="cell"><span class="rk">in ℝ²</span><span class="rv" data-role="E"></span></div>
+        <div class="cell"><span class="rk">on 𝕃²<sub>c</sub></span><span class="rv" data-role="L"></span></div>
+        <div class="cell"><span class="rk">ratio</span><span class="rv" data-role="R"></span></div>
+      </div>
+    </div>
+    <div class="op-row" data-op="ext">
+      <p class="op-row-title">Exterior angle</p>
+      <div class="xp-pair">
+        <div>
+          <p class="xp-pane-label"><span class="space">$\mathbb{R}^2$, before the map</span><span>drag the points</span></p>
+          <canvas class="xp-canvas" width="420" height="420" data-role="plane"
+            aria-label="Two points and the exterior angle at the first in the Euclidean plane"></canvas>
+        </div>
+        <div>
+          <p class="xp-pane-label"><span class="space">$\mathbb{L}^2_c$, after the map</span><span>drag to rotate</span></p>
+          <canvas class="xp-canvas rotate" width="420" height="420" data-role="hyp"
+            aria-label="Two points and the exterior angle at the first on the hyperboloid"></canvas>
+        </div>
+      </div>
+      <div class="xp-readout three">
+        <div class="cell"><span class="rk">in ℝ²</span><span class="rv" data-role="E"></span></div>
+        <div class="cell"><span class="rk">on 𝕃²<sub>c</sub></span><span class="rv" data-role="L"></span></div>
+        <div class="cell"><span class="rk">ratio</span><span class="rv" data-role="R"></span></div>
+      </div>
+    </div>
+    <div class="op-row" data-op="aper">
+      <p class="op-row-title">Half-aperture</p>
+      <div class="xp-pair">
+        <div>
+          <p class="xp-pane-label"><span class="space">$\mathbb{R}^2$, before the map</span><span>drag the point</span></p>
+          <canvas class="xp-canvas" width="420" height="420" data-role="plane"
+            aria-label="One point and its entailment cone in the Euclidean plane"></canvas>
+        </div>
+        <div>
+          <p class="xp-pane-label"><span class="space">$\mathbb{L}^2_c$, after the map</span><span>drag to rotate</span></p>
+          <canvas class="xp-canvas rotate" width="420" height="420" data-role="hyp"
+            aria-label="One point and its entailment cone on the hyperboloid"></canvas>
+        </div>
+      </div>
+      <div class="xp-readout three">
+        <div class="cell"><span class="rk">in ℝ²</span><span class="rv" data-role="E"></span></div>
+        <div class="cell"><span class="rk">on 𝕃²<sub>c</sub></span><span class="rv" data-role="L"></span></div>
+        <div class="cell"><span class="rk">ratio</span><span class="rv" data-role="R"></span></div>
+      </div>
+    </div>
+  </figure>
+  <p class="figure-caption">
+    <span class="figure-num">Figure 6.</span> Distance (top), exterior angle (middle) and
+    half-aperture (bottom), before (left) and after (right) the exponential map.
+  </p>
+
+  <p>
+    Comparing each operation before and after the map gives three
+    <strong class="term">distortion ratios</strong>, and we derive a closed-form
+    expression for each. They turn out to depend on just four numbers: the norms $r_1$
+    and $r_2$ of the encoder outputs, the angle $\theta$ between them, and the curvature
+    $c$. The distance ratio, for example, is the hyperbolic law of cosines divided by the
+    Euclidean one:
+  </p>
+
+  <div class="equation" id="eq:rd">\[
+    r_d(r_1, r_2, \theta; c) =
+    \frac{\operatorname{arcosh}\!\big( \cosh(\sqrt{c}\, r_1) \cosh(\sqrt{c}\, r_2) - \sinh(\sqrt{c}\, r_1) \sinh(\sqrt{c}\, r_2) \cos\theta \big)}
+    {\sqrt{c}\, \sqrt{r_1^2 + r_2^2 - 2 r_1 r_2 \cos\theta}}.
+  \]</div>
+
+  <p>
+    At a given curvature, the distance ratio is therefore a function of three numbers,
+    and fills a cube over $(r_1, r_2, \theta)$; the same goes for the exterior angle
+    ratio. To read the cube, we fix $r_1$ and take a two-dimensional slice over $r_2$
+    and $\theta$, as in Figure 7. In the next section, $r_1$ will be the most common
+    radius of a model's text embeddings.
+  </p>
+
+  <figure class="xp-fig" id="fig-cube">
+    <div class="xp-controls">
+      <label><span><span class="var">r</span><sub>1</sub></span>
+        <input type="range" min="0.1" max="1.45" step="0.01" value="0.8" data-role="r1">
+        <output data-role="r1-val">0.80</output>
+      </label>
+      <label><span class="var">c</span>
+        <input type="range" min="-1.301" max="1" step="0.001" value="0" data-role="c">
+        <output data-role="c-val">1.0</output>
+      </label>
+    </div>
+    <canvas class="xp-canvas landscape" width="860" height="470" data-role="canvas"
+      aria-label="A cube of distance-ratio values over r1, r2 and theta, cut at the chosen r1, next to the two-dimensional slice at that cut"></canvas>
+  </figure>
+  <p class="figure-caption">
+    <span class="figure-num">Figure 7.</span> The distance ratio $r_d$ fills a cube over
+    the radii $r_1, r_2$ and the angle $\theta$ (left). Cutting it at a fixed $r_1$ gives
+    a two-dimensional slice (right).
+  </p>
+</section>
+
+<section class="tex-section" id="sec-results">
+  <h2 class="sec-title"><span class="num">4</span> How hyperbolic are they?</h2>
+
+  <div class="tex-subsection" id="subsec-distortion">
+    <h3 class="subsec-title"><span class="num">4.1</span> Distance distortion</h3>
+
+    <p>
+      We trained MERU, HyCoCLIP, ARGENT and PHyCLIP on CC3M, about three million
+      image-caption pairs. All four start at curvature $c = 1$ and push it down to its
+      lower bound of $c = 0.1$ within the first tenth of training, while their embeddings
+      settle at radii between roughly 0.2 and 1.1. Figure 8 cuts the cube of Figure 7 at
+      each model's most common text radius and final curvature. In every panel, the
+      exponential map changes distances by less than 1%.
+    </p>
+
+    <figure class="xp-fig" id="fig-models">
+      <canvas class="xp-canvas landscape" width="860" height="330" data-role="canvas"
+        aria-label="The distance ratio over the image radius and the angle, for each of the four trained models, on one shared colour scale"></canvas>
+    </figure>
+    <p class="figure-caption">
+      <span class="figure-num">Figure 8.</span> The distance ratio between a text embedding
+      at the model's most common text radius $r_1$ and an image embedding at radius $r_2$,
+      at the converged curvature $c = 0.1$ (ViT-S/16; for PHyCLIP the mean over its 64
+      factors). All four panels share one colour scale.
+    </p>
+  </div>
+
+  <div class="tex-subsection" id="subsec-readout">
+    <h3 class="subsec-title"><span class="num">4.2</span> Removing the exponential map at inference</h3>
+
+    <p>
+      If the exponential map is close to the identity, removing it at read-out should go
+      unnoticed. To test this, we evaluate every trained model twice: once as usual, and
+      once with the exponential map deleted, so that images and captions are compared by
+      their Euclidean distance before the map. Table 1 shows that classification and
+      retrieval scores barely move, and do not even move in a consistent direction. The
+      publicly released MERU and HyCoCLIP checkpoints, trained on far more data, behave
+      the same way.
+    </p>
+
+    <p class="table-caption"><span class="table-num">Table 1.</span> Deleting the
+      exponential map at inference. Classification is the mean accuracy over sixteen
+      datasets, retrieval the mean recall over both directions, both datasets and both
+      cutoffs, in %. max |Δ| is the largest change on any single benchmark.</p>
+    <div class="table-scroll">
+    <table class="results">
+      <thead>
+        <tr class="groups">
+          <th></th><th></th>
+          <th class="bandA" colspan="4">Classification</th>
+          <th class="bandB" colspan="4">Retrieval</th>
+        </tr>
+        <tr>
+          <th class="model">Model</th><th class="model">Encoder</th>
+          <th class="bandA">With expm</th><th class="bandA">Without</th><th class="bandA">Δ</th><th class="bandA">max |Δ|</th>
+          <th class="bandB">With expm</th><th class="bandB">Without</th><th class="bandB">Δ</th><th class="bandB">max |Δ|</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="model" rowspan="2">MERU</td><td class="model">ViT-S/16</td><td>19.66</td><td>19.67</td><td>+0.01</td><td>0.20</td><td>44.81</td><td>44.83</td><td>+0.02</td><td>0.16</td></tr>
+        <tr><td class="model">ViT-B/16</td><td>22.22</td><td>22.23</td><td>+0.01</td><td>0.19</td><td>49.20</td><td>49.24</td><td>+0.03</td><td>0.26</td></tr>
+        <tr class="enc-first"><td class="model" rowspan="2">HyCoCLIP</td><td class="model">ViT-S/16</td><td>23.80</td><td>23.78</td><td>−0.02</td><td>0.11</td><td>50.09</td><td>50.11</td><td>+0.02</td><td>0.10</td></tr>
+        <tr><td class="model">ViT-B/16</td><td>25.02</td><td>25.01</td><td>−0.02</td><td>0.06</td><td>52.47</td><td>52.54</td><td>+0.07</td><td>0.30</td></tr>
+        <tr class="enc-first"><td class="model" rowspan="2">ARGENT</td><td class="model">ViT-S/16</td><td>22.99</td><td>22.95</td><td>−0.05</td><td>0.42</td><td>48.34</td><td>48.24</td><td>−0.10</td><td>0.70</td></tr>
+        <tr><td class="model">ViT-B/16</td><td>24.35</td><td>24.32</td><td>−0.03</td><td>0.39</td><td>52.57</td><td>52.56</td><td>−0.01</td><td>0.10</td></tr>
+        <tr class="enc-first"><td class="model" rowspan="2">PHyCLIP</td><td class="model">ViT-S/16</td><td>23.03</td><td>23.01</td><td>−0.03</td><td>0.37</td><td>49.34</td><td>49.24</td><td>−0.11</td><td>0.70</td></tr>
+        <tr><td class="model">ViT-B/16</td><td>25.06</td><td>24.97</td><td>−0.09</td><td>0.54</td><td>52.35</td><td>52.58</td><td>+0.23</td><td>0.46</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="tex-subsection" id="subsec-controls">
+    <h3 class="subsec-title"><span class="num">4.3</span> Training without the exponential map</h3>
+
+    <p>
+      That the map can be removed after training does not mean the curvature played no
+      role during training. To test this, we train a Euclidean control for every model
+      from scratch: the same losses, data and schedule, but with every operation computed
+      in Euclidean space and the exponential map replaced by the identity. The two runs
+      only differ in the first 10,000 or so steps, while the curvature is still on its way
+      down to its lower bound. From then on, their radii, losses and temperatures are
+      nearly identical, and so are their final scores (Table 2). The Euclidean controls
+      come out slightly ahead more often than not, but we do not read this as Euclidean
+      models being better: the point is how close the two are.
+    </p>
+
+    <p class="table-caption"><span class="table-num">Table 2.</span> Each objective in its
+      Euclidean ($\mathbb{E}^n$) and hyperbolic ($\mathbb{L}^n_c$) form. Classification and
+      retrieval as in Table 1; TIE, LCA, <i>J</i>, <i>P</i><sub>H</sub> and <i>R</i><sub>H</sub>
+      are hierarchical metrics on WordNet over ImageNet. The
+      <span class="best-key">shaded</span> cell marks the better geometry; ties are
+      unshaded.</p>
+    <div class="table-scroll">
+    <table class="results">
+      <thead>
+        <tr class="groups">
+          <th></th><th></th>
+          <th class="bandA" colspan="2">Classification</th>
+          <th class="bandA" colspan="2">Retrieval</th>
+          <th class="bandB" colspan="2">TIE (↓)</th>
+          <th class="bandB" colspan="2">LCA (↓)</th>
+          <th class="bandC" colspan="2"><i>J</i> (↑)</th>
+          <th class="bandC" colspan="2"><i>P</i><sub>H</sub> (↑)</th>
+          <th class="bandC" colspan="2"><i>R</i><sub>H</sub> (↑)</th>
+        </tr>
+        <tr>
+          <th class="model">Model</th><th class="model">Encoder</th>
+          <th class="bandA">𝔼<sup>n</sup></th><th class="bandA">𝕃<sup>n</sup><sub>c</sub></th><th class="bandA">𝔼<sup>n</sup></th><th class="bandA">𝕃<sup>n</sup><sub>c</sub></th><th class="bandB">𝔼<sup>n</sup></th><th class="bandB">𝕃<sup>n</sup><sub>c</sub></th><th class="bandB">𝔼<sup>n</sup></th><th class="bandB">𝕃<sup>n</sup><sub>c</sub></th><th class="bandC">𝔼<sup>n</sup></th><th class="bandC">𝕃<sup>n</sup><sub>c</sub></th><th class="bandC">𝔼<sup>n</sup></th><th class="bandC">𝕃<sup>n</sup><sub>c</sub></th><th class="bandC">𝔼<sup>n</sup></th><th class="bandC">𝕃<sup>n</sup><sub>c</sub></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="model" rowspan="2">MERU</td><td class="model">ViT-S/16</td><td class="best">19.8</td><td>19.7</td><td class="best">45.7</td><td>44.8</td><td class="best">6.440</td><td>6.582</td><td class="best">3.384</td><td>3.442</td><td class="best">0.605</td><td>0.596</td><td class="best">0.719</td><td>0.713</td><td class="best">0.719</td><td>0.711</td></tr>
+        <tr><td class="model">ViT-B/16</td><td class="best">22.5</td><td>22.2</td><td class="best">50.0</td><td>49.2</td><td class="best">6.091</td><td>6.220</td><td class="best">3.215</td><td>3.304</td><td class="best">0.626</td><td>0.621</td><td class="best">0.737</td><td>0.730</td><td class="best">0.735</td><td>0.732</td></tr>
+        <tr class="enc-first"><td class="model" rowspan="2">HyCoCLIP</td><td class="model">ViT-S/16</td><td>23.5</td><td class="best">23.8</td><td>47.0</td><td class="best">50.1</td><td>6.028</td><td class="best">5.851</td><td>3.180</td><td class="best">3.095</td><td>0.632</td><td class="best">0.641</td><td>0.740</td><td class="best">0.748</td><td>0.738</td><td class="best">0.747</td></tr>
+        <tr><td class="model">ViT-B/16</td><td class="best">25.9</td><td>25.0</td><td class="best">53.3</td><td>52.5</td><td class="best">5.514</td><td>5.719</td><td class="best">2.974</td><td>3.103</td><td class="best">0.664</td><td>0.652</td><td class="best">0.764</td><td>0.753</td><td class="best">0.764</td><td>0.757</td></tr>
+        <tr class="enc-first"><td class="model" rowspan="2">ARGENT</td><td class="model">ViT-S/16</td><td>22.7</td><td class="best">23.0</td><td class="best">49.6</td><td>48.3</td><td>5.963</td><td class="best">5.931</td><td class="best">3.130</td><td>3.132</td><td>0.634</td><td class="best">0.637</td><td>0.743</td><td class="best">0.746</td><td>0.740</td><td class="best">0.742</td></tr>
+        <tr><td class="model">ViT-B/16</td><td class="best">25.6</td><td>24.4</td><td class="best">53.0</td><td>52.6</td><td class="best">5.579</td><td>5.661</td><td class="best">3.026</td><td>3.079</td><td class="best">0.661</td><td>0.656</td><td class="best">0.761</td><td>0.757</td><td class="best">0.762</td><td>0.761</td></tr>
+        <tr class="enc-first"><td class="model" rowspan="2">PHyCLIP</td><td class="model">ViT-S/16</td><td class="best">23.5</td><td>23.0</td><td class="best">49.8</td><td>49.3</td><td class="best">5.920</td><td>5.998</td><td class="best">3.104</td><td>3.203</td><td class="best">0.636</td><td>0.633</td><td class="best">0.746</td><td>0.740</td><td>0.742</td><td>0.742</td></tr>
+        <tr><td class="model">ViT-B/16</td><td class="best">25.5</td><td>25.1</td><td class="best">53.5</td><td>52.3</td><td class="best">5.588</td><td>5.745</td><td class="best">3.001</td><td>3.122</td><td class="best">0.660</td><td>0.652</td><td class="best">0.760</td><td>0.752</td><td class="best">0.760</td><td>0.755</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<section class="tex-section" id="sec-conclusion">
+  <h2 class="sec-title"><span class="num">5</span> Conclusion</h2>
+
+  <p>
+    We asked whether the curvature in current hyperbolic VLMs does the geometric work it
+    is credited with, and found that it does not. The exponential map reduces to the
+    identity early in training, leaving the embedding space effectively Euclidean for the
+    rest of training and at inference. Consistent with this, deleting the map at read-out
+    leaves the scores unchanged, and Euclidean controls trained with the same losses match
+    the hyperbolic models closely. Hyperbolic VLMs have proven effective in practice, and we
+    hope these results encourage researchers to take a critical look at their losses. With the right optimization, we
+    believe they can do much better, and distortion ratios offer a way to measure it.
+  </p>
+</section>
+
+<section class="tex-section" id="sec-links">
+  <h2 class="sec-title">Paper</h2>
+
+  <div class="xp-links">
+    <a class="xp-link" href="https://openreview.net/forum?id=zdTnWSMvsX">
+      <span class="xp-link-kind">Paper and reviews</span>
+      <span class="xp-link-title">OpenReview</span>
+    </a>
+  </div>
+</section>
+
+<section class="tex-section" id="sec-references">
+  <h2 class="sec-title">References</h2>
+
+  <ol class="xp-refs">
+    <li id="ref-desai2023">
+      Karan Desai, Maximilian Nickel, Tanmay Rajpurohit, Justin Johnson and Shanmukha
+      Ramakrishna Vedantam. Hyperbolic Image-Text Representations. ICML 2023.
+      <a href="https://arxiv.org/abs/2304.09172">arXiv:2304.09172</a>.
+    </li>
+    <li id="ref-huynh2026">
+      Chuong Huynh, Hossein Souri, Abhinav Kumar, Vitali Petsiuk, Deen Dayal Mohan and
+      Suren Kumar. ARGENT: Adaptive Hierarchical Image-Text Representations. ECCV 2026.
+    </li>
+    <li id="ref-pal2025">
+      Avik Pal, Max van Spengler, Guido Maria D’Amely di Melendugno, Alessandro Flaborea,
+      Fabio Galasso and Pascal Mettes. Compositional Entailment Learning for Hyperbolic
+      Vision-Language Models. ICLR 2025.
+      <a href="https://openreview.net/forum?id=3i13Gev2hV">OpenReview</a>.
+    </li>
+    <li id="ref-radford2021">
+      Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini
+      Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, Gretchen Krueger
+      and Ilya Sutskever. Learning Transferable Visual Models From Natural Language
+      Supervision. ICML 2021.
+      <a href="https://proceedings.mlr.press/v139/radford21a.html">PMLR 139</a>.
+    </li>
+    <li id="ref-yoshikawa2026">
+      Daiki Yoshikawa and Takashi Matsubara. PHyCLIP: ℓ<sub>1</sub>-Product of Hyperbolic
+      Factors Unifies Hierarchy and Compositionality in Vision-Language Representation
+      Learning. ICLR 2026.
+    </li>
+  </ol>
+</section>
+
+  </article>
+
+  <nav class="toc" aria-label="Table of contents">
+    <p class="toc-label">CONTENTS</p>
+    <ol id="toc-list"></ol>
+  </nav>
+</div>
+
+<script>
+// Render all math on the page ($...$ inline, \[...\] display), then run
+// numbering/TOC once MathJax has finished typesetting.
+document.addEventListener("DOMContentLoaded", function () {
+  MathJax.startup.promise.then(setUpPage);
+});
+
+function setUpPage() {
+  // --- Auto-number equations in document order, like LaTeX \label/\eqref ---
+  var equations = Array.prototype.slice.call(document.querySelectorAll(".equation"));
+  var numberOf = {};
+  equations.forEach(function (eqEl, i) {
+    var n = i + 1;
+    numberOf[eqEl.id] = n;
+    var tag = document.createElement("span");
+    tag.className = "eq-num";
+    tag.textContent = "(" + n + ")";
+    eqEl.appendChild(tag);
+  });
+
+  // --- Resolve \eqref-style spans and make them clickable ---
+  document.querySelectorAll(".eqref").forEach(function (span) {
+    var ref = span.getAttribute("data-ref");
+    var n = numberOf[ref];
+    span.textContent = n ? "(" + n + ")" : "(??)";
+    if (n) {
+      span.addEventListener("click", function () {
+        var target = document.getElementById(ref);
+        if (!target) return;
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        target.classList.add("flash");
+        setTimeout(function () { target.classList.remove("flash"); }, 900);
+      });
+    }
+  });
+
+  // --- Build the table of contents from section/subsection headings ---
+  var tocList = document.getElementById("toc-list");
+  document.querySelectorAll(".tex-section").forEach(function (sectionEl) {
+    var h2 = sectionEl.querySelector(":scope > h2.sec-title");
+    if (!h2) return;
+    var li = document.createElement("li");
+    var a = document.createElement("a");
+    a.href = "#" + sectionEl.id;
+    a.textContent = h2.textContent.trim();
+    li.appendChild(a);
+
+    var subOl = document.createElement("ol");
+    sectionEl.querySelectorAll(".tex-subsection").forEach(function (subEl) {
+      var h3 = subEl.querySelector(":scope > h3.subsec-title");
+      if (!h3) return;
+      var subLi = document.createElement("li");
+      var subA = document.createElement("a");
+      subA.href = "#" + subEl.id;
+      subA.textContent = h3.textContent.trim();
+      subLi.appendChild(subA);
+      subOl.appendChild(subLi);
+    });
+    if (subOl.children.length) li.appendChild(subOl);
+    tocList.appendChild(li);
+  });
+
+  // --- Highlight the active TOC entry on scroll ---
+  var tocLinks = Array.prototype.slice.call(document.querySelectorAll(".toc a"));
+  var targets = tocLinks
+    .map(function (a) { return document.getElementById(a.getAttribute("href").slice(1)); })
+    .filter(Boolean);
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      var link = document.querySelector('.toc a[href="#' + entry.target.id + '"]');
+      if (!link) return;
+      if (entry.isIntersecting) {
+        tocLinks.forEach(function (l) { l.classList.remove("active"); });
+        link.classList.add("active");
+      }
+    });
+  }, { rootMargin: "-15% 0px -70% 0px" });
+  targets.forEach(function (t) { observer.observe(t); });
+}
+</script>
+
+<script>
+// Shared helpers for the figures, exposed as window.XP. Loaded before every fig-*.js.
+(function () {
+
+// Read a CSS custom property from :root, so every figure follows the site theme.
+function css(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+// Call fn now and again whenever the colour scheme flips.
+function onTheme(fn) {
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  mq.addEventListener('change', fn);
+}
+
+// Size a canvas's backing store to its CSS box times the device pixel ratio.
+// Drawing code then works in CSS pixels of the canvas's intrinsic width/height.
+function setupCanvas(canvas) {
+  // The logical size is remembered on first setup, because setting
+  // canvas.width below also rewrites the width attribute.
+  if (!canvas.dataset.w) {
+    canvas.dataset.w = canvas.getAttribute('width');
+    canvas.dataset.h = canvas.getAttribute('height');
+  }
+  const w = Number(canvas.dataset.w);
+  const h = Number(canvas.dataset.h);
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.aspectRatio = `${w} / ${h}`;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+
+// Pointer position in the canvas's own coordinate system.
+function canvasPoint(canvas, ev, w, h) {
+  const r = canvas.getBoundingClientRect();
+  return [((ev.clientX - r.left) / r.width) * w, ((ev.clientY - r.top) / r.height) * h];
+}
+
+function svgPoint(svg, ev) {
+  const p = svg.createSVGPoint();
+  p.x = ev.clientX;
+  p.y = ev.clientY;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  const n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+// Piecewise linear colour ramp through the given hex stops; t in [0, 1].
+function ramp(stops) {
+  const rgb = stops.map(hexToRgb);
+  const n = rgb.length - 1;
+  return (t) => {
+    const x = Math.min(Math.max(t, 0), 1) * n;
+    const i = Math.min(Math.floor(x), n - 1);
+    const f = x - i;
+    const a = rgb[i];
+    const b = rgb[i + 1];
+    return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+  };
+}
+
+// Paint a scalar field (rows of nx values, ny rows, row 0 at the top) into a
+// region of a canvas. The field is drawn small and scaled up with smoothing,
+// which gives a soft, continuous look at a fraction of the cost.
+function paintField(ctx, field, nx, ny, colour, x, y, w, h) {
+  const off = document.createElement('canvas');
+  off.width = nx;
+  off.height = ny;
+  const octx = off.getContext('2d');
+  const img = octx.createImageData(nx, ny);
+  for (let k = 0; k < nx * ny; k++) {
+    const c = colour(field[k]);
+    img.data[4 * k] = c[0];
+    img.data[4 * k + 1] = c[1];
+    img.data[4 * k + 2] = c[2];
+    img.data[4 * k + 3] = 255;
+  }
+  octx.putImageData(img, 0, 0);
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(off, x, y, w, h);
+  ctx.restore();
+}
+
+// Marching squares: line segments where the field crosses `level`.
+// Returns segments in grid coordinates (column, row).
+function contour(field, nx, ny, level) {
+  const segs = [];
+  const v = (i, j) => field[j * nx + i];
+  const lerp = (a, b) => (level - a) / (b - a);
+  for (let j = 0; j < ny - 1; j++) {
+    for (let i = 0; i < nx - 1; i++) {
+      const a = v(i, j), b = v(i + 1, j), c = v(i + 1, j + 1), d = v(i, j + 1);
+      const idx = (a > level ? 8 : 0) | (b > level ? 4 : 0) | (c > level ? 2 : 0) | (d > level ? 1 : 0);
+      if (idx === 0 || idx === 15) continue;
+      const top = [i + lerp(a, b), j];
+      const right = [i + 1, j + lerp(b, c)];
+      const bottom = [i + lerp(d, c), j + 1];
+      const left = [i, j + lerp(a, d)];
+      switch (idx) {
+        case 1: case 14: segs.push([left, bottom]); break;
+        case 2: case 13: segs.push([bottom, right]); break;
+        case 3: case 12: segs.push([left, right]); break;
+        case 4: case 11: segs.push([top, right]); break;
+        case 6: case 9: segs.push([top, bottom]); break;
+        case 7: case 8: segs.push([left, top]); break;
+        case 5: segs.push([left, top], [bottom, right]); break;
+        case 10: segs.push([top, right], [left, bottom]); break;
+      }
+    }
+  }
+  return segs;
+}
+
+// Small seeded generator, so "new problems" are reproducible within a session.
+function rng(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function arrowHead(ctx, x0, y0, x1, y1, size) {
+  const a = Math.atan2(y1 - y0, x1 - x0);
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x1 - size * Math.cos(a - 0.42), y1 - size * Math.sin(a - 0.42));
+  ctx.lineTo(x1 - size * Math.cos(a + 0.42), y1 - size * Math.sin(a + 0.42));
+  ctx.closePath();
+  ctx.fill();
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs = {}, parent) {
+  const node = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (parent) parent.appendChild(node);
+  return node;
+}
+
+// A square photo with rounded corners, centred on (cx, cy).
+let photoId = 0;
+function photo(parent, href, cx, cy, size, rx = 5) {
+  const id = `xp-photo-${photoId++}`;
+  const clip = el('clipPath', { id }, parent);
+  el('rect', { x: cx - size / 2, y: cy - size / 2, width: size, height: size, rx }, clip);
+  return el('image', { href, x: cx - size / 2, y: cy - size / 2, width: size, height: size, 'clip-path': `url(#${id})`, preserveAspectRatio: 'xMidYMid slice' }, parent);
+}
+
+  window.XP = { css, photo, onTheme, setupCanvas, canvasPoint, svgPoint, hexToRgb, ramp, paintField, contour, rng, arrowHead, SVG_NS, el };
+})();
+</script>
+
+<script>
+// Lorentz-model geometry shared by the figures, exposed as window.XP.geo.
+//
+// Two encoder outputs are described by their radii r1, r2 and the angle theta
+// between them; every primitive and every ratio of the paper depends on the pair
+// only through (r1, r2, theta) and the curvature c (Appendix B). The forms below
+// are the closed forms of the paper, rewritten with half-angle identities so
+// they stay accurate when two points nearly coincide (arccos and arcosh lose all
+// precision next to 1).
+(function () {
+
+const K = 0.1; // aperture constant of the entailment cones (Appendix A)
+
+// ---- distance -------------------------------------------------------------
+// d_E = sqrt(r1^2 + r2^2 - 2 r1 r2 cos theta)
+function distE(r1, r2, th) {
+  const s = Math.sin(th / 2);
+  return Math.sqrt((r1 - r2) ** 2 + 4 * r1 * r2 * s * s);
+}
+
+// d_L = arcosh(A) / sqrt(c), with A - 1 = 2 sinh^2((a1-a2)/2) + 2 sinh a1 sinh a2 sin^2(theta/2)
+// and a_i = sqrt(c) r_i, so that sinh(sqrt(c) d / 2) = sqrt((A - 1) / 2).
+function distL(r1, r2, th, c) {
+  const sc = Math.sqrt(c);
+  const a1 = sc * r1, a2 = sc * r2;
+  const h = Math.sinh((a1 - a2) / 2), s = Math.sin(th / 2);
+  return (2 / sc) * Math.asinh(Math.sqrt(h * h + Math.sinh(a1) * Math.sinh(a2) * s * s));
+}
+
+// ---- exterior angle at point 1 toward point 2 -------------------------------
+// Measured from the outward continuation of the ray through point 1. Both are
+// written as atan2 of the components of the direction to point 2 along the
+// outward radial direction and the direction perpendicular to it.
+function extE(r1, r2, th) {
+  return Math.abs(Math.atan2(r2 * Math.sin(th), r2 * Math.cos(th) - r1));
+}
+
+function extL(r1, r2, th, c) {
+  const sc = Math.sqrt(c);
+  const a1 = sc * r1, a2 = sc * r2;
+  const along = Math.sinh(a2) * Math.cos(th) * Math.cosh(a1) - Math.cosh(a2) * Math.sinh(a1);
+  return Math.abs(Math.atan2(Math.sinh(a2) * Math.sin(th), along));
+}
+
+// ---- half-aperture --------------------------------------------------------
+// Euclidean ball radius R = 2K / sqrt(c), the matching rule of the paper, so
+// both apertures agree to first order. arcsin saturates at pi/2.
+const asinClamp = (x) => Math.asin(Math.min(1, x));
+function aperE(r, c) { return asinClamp((2 * K) / (Math.sqrt(c) * r)); }
+function aperL(r, c) { return asinClamp((2 * K) / Math.sinh(Math.sqrt(c) * r)); }
+function ballR(c) { return (2 * K) / Math.sqrt(c); }
+
+// ---- the three ratios -----------------------------------------------------
+function ratioD(r1, r2, th, c) {
+  const e = distE(r1, r2, th);
+  return e < 1e-12 ? 1 : distL(r1, r2, th, c) / e;
+}
+function ratioExt(r1, r2, th, c) {
+  const e = extE(r1, r2, th);
+  return e < 1e-12 ? 1 : extL(r1, r2, th, c) / e;
+}
+function ratioAper(r, c) { return aperL(r, c) / aperE(r, c); }
+
+// ---- points on the hyperboloid L^2_c, as [x, y, t] with t the time axis ----
+// Exponential map at the origin [0, 0, 1/sqrt(c)] of a plane vector v.
+function expO(v, c) {
+  const sc = Math.sqrt(c);
+  const r = Math.hypot(v[0], v[1]);
+  const k = r < 1e-12 ? 1 : Math.sinh(sc * r) / (sc * r);
+  return [k * v[0], k * v[1], Math.cosh(sc * r) / sc];
+}
+
+const lor = (a, b) => a[0] * b[0] + a[1] * b[1] - a[2] * b[2];
+const comb = (p, a, q, b) => [p * a[0] + q * b[0], p * a[1] + q * b[1], p * a[2] + q * b[2]];
+
+// Exponential map at a point x of the hyperboloid, for a tangent vector w.
+function expAt(x, w, c) {
+  const sc = Math.sqrt(c);
+  const n = Math.sqrt(Math.max(lor(w, w), 0));
+  if (n < 1e-12) return x.slice();
+  return comb(Math.cosh(sc * n), x, Math.sinh(sc * n) / (sc * n), w);
+}
+
+// Points along the geodesic from x to y, n + 1 samples.
+function geodesic(x, y, c, n) {
+  const sc = Math.sqrt(c);
+  const D = Math.acosh(Math.max(1, -c * lor(x, y)));
+  const out = [];
+  for (let i = 0; i <= n; i++) {
+    const s = i / n;
+    out.push(D < 1e-9 ? comb(1 - s, x, s, y) : comb(Math.sinh((1 - s) * D) / Math.sinh(D), x, Math.sinh(s * D) / Math.sinh(D), y));
+  }
+  return out;
+}
+
+// Orthonormal tangent frame at expO(v): outward radial direction a and the
+// counter-clockwise angular direction e (both of Lorentzian norm 1).
+function frameAt(v, c) {
+  const sc = Math.sqrt(c);
+  const r = Math.hypot(v[0], v[1]);
+  const u = r < 1e-12 ? [1, 0] : [v[0] / r, v[1] / r];
+  return {
+    a: [Math.cosh(sc * r) * u[0], Math.cosh(sc * r) * u[1], Math.sinh(sc * r)],
+    e: [-u[1], u[0], 0],
+  };
+}
+
+window.XP.geo = {
+  K, distE, distL, extE, extL, aperE, aperL, ballR,
+  ratioD, ratioExt, ratioAper, expO, expAt, geodesic, frameAt, lor, comb,
+};
+
+// Text-embedding radial modes at the converged curvature c = 0.1, ViT-S/16 (Fig. 3).
+// The image-caption pairs of Figures 1 and 2. Photos from Wikimedia Commons,
+// credited in the caption of Figure 1; build.js inlines them as data URIs.
+window.XP.PAIRS = [
+  { img: 'data:image/jpeg;base64,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', caption: 'a dog playing fetch', short: 'dog' },
+  { img: 'data:image/jpeg;base64,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', caption: 'a cat asleep on a sofa', short: 'cat' },
+  { img: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAcFBQYFBAcGBgYIBwcICxILCwoKCxYPEA0SGhYbGhkWGRgcICgiHB4mHhgZIzAkJiorLS4tGyIyNTEsNSgsLSz/2wBDAQcICAsJCxULCxUsHRkdLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCz/wgARCACQAJADASIAAhEBAxEB/8QAGwAAAgMBAQEAAAAAAAAAAAAAAwQBAgUGAAf/xAAZAQADAQEBAAAAAAAAAAAAAAAAAQIDBAX/2gAMAwEAAhADEAAAAeYue2kq+0fJpMMJrSLlalAAVlJSx3s+nJYcsmm4+5m+PK6l1cqI/V1zP5eyNIT6meo2aMw13FIIcaWYz6FnE2QYby28bzlqtdnLgMje0lMxiK9nnuj57PRdohgmj9ozSC6gaWJnPVLOjjO8/Qgo9ndfIJxK9w3QFltq+KGN3uh4Dr3kzN1DLMzugxXQPN5iVz5xot9Nd+80lT1pXFoXw9f1rEWgNhG0vplsh++Uae1I8fN315rl69BlXiTUydfXj5E6zlDUDJy+3a1PTqzC9B7OlwHQa+dsSirOzC584baplKz2EvG04cfdWm8E4RhaaN8X07a6XglagOmz74lGec2o61/Okay/I0vn0Xh9PIx6lwWV1JDmsn6BAvmYfpyTS6V8MMuTmqY0ANTWMHqpDQ1MpyasTNYocImRDErWA/hERNxyKPRQZh+8A5ijD+zoD//EACkQAAIBBAEDAwQDAQAAAAAAAAECAwAEERITBSEjEBQiFSQxMzI0QUL/2gAIAQEAAQUCrQ1igMlkwuFFdqOaVSQV7gYqIZWVcDDYjV3n9q1BClbM0a4wVzWYxWqtUtuY7cthoUEhHiA7kjKprG9q+IbnZq45pUgikZvaSEcY4sdzn0/AU5Y/puR9xAm7yw+3kjj0rjTTWkSQQTuXqIulRF2mSNxTYVeEmPGRmv8ApQxLW5j6fcf2IpmjSVvEtxmicyBwtQ3RhRpfLySTtGlwswWQU7fCFt1A7xRbPxYnSMG4vdfps/7o/wCUjKzaytRiKGMsr5ZXnIJtsy1EzM6gggcsYbiIALW580g+5hH3l+PtJEZpIIJFcW/wWLD8ce7fsRWZJC1RfBY1bcpK00S+JxtKM7RNiSf+0j+UmTHJMKgndHdeYcOp4YXEttiQ7xlk3nj2LplJI+QmFtozJ5DUfZ5Hy1syrLsujYq6lIuYG2R1nauaUPdRFiJdmkjxQLGlzsgcEd6t4si4SNWBILxF6W2faSEuyW+GNonJanV/KKYuacHf2qZ4TV3bPlnav9hj8Fong2wI0JPevkK+WRtXyob7LcOhTqFc1pJTQIa4qL6U7hqltUZYSSlo2EfWkmWMHFd/TY1vQeo96bngj96uHmtalTDlRSxF1z3iXltpkYL/ALBbGZFBT0zWazTScaF3Y2HUXja6jCNFHMxnuuYCQiluvg9w7mykflnHxiOrQKJLO6PHc7JgVq9firj8Wlk00dxC8LrO0saTNanaKvBXGuOI0AVJ/UljIhV5LV7ibnm9zLoXZqDsKF3KKkk5DBGh6df7Nbq7IyR3c6i1vq9nfkGVjW5rpUPuLgdPRT6PBFJX02Bg/SVp7CVS0LrWK6VIJ7HqnwioEilvLhKTq0y1M6yygbGwjS3hyDQ71isUME/j04VIfp0LVL0ySNpre8Z/by5FpKaXp0xpOmOaXpQo2giqC3LVq0dB6zQ9M1sPTtjB9Md/j6ZrXNAgVtms1vW1bDANbUsgau2dq7Vnt2rZa7ms1tkl8UZaLgD/xAAkEQACAgEFAAICAwAAAAAAAAAAAQIRAwQQEiExFCIgQTBCcf/aAAgBAwEBPwEQqH4IjFWKP2aFX7/Ch+CE66ZGX2Eq92Qkh+n9aOLQ+yHtkVfu6dGTJK6L5r/NrO0Rb2jFydI+HD1j0mN9s+LCKdD09edi4LqUR4IzVRJ6SUFa7EQm4O4kMnJchSHNR7Y9WsjqjJjhw5xMVqH3XYtRbroy3yd7RzuPQtWzJqFPG0V0S1DyRoeab9kWl+y73opbUymcf4//xAAhEQACAQQDAAMBAAAAAAAAAAAAARECEBIhEyIxAyBBMP/aAAgBAgEBPwGST0nZMFVQ6uqZVU/w9vI28hyNa0NdSoVmU+DXaRyhFS6wV+/SlEReJKkiCdHI/DkZm2ZG/wAM2hfIn7ZpNbGoIMTixKW5gfujApthJxlNEMnZhDIVvLyTaUSjL+UH/8QANxAAAQMCBAQEBAUCBwAAAAAAAQACERIhAzFBUSIyYXEQE4GRIDOCoQQjQkOx0eE0YnKSo8Hw/9oACAEBAAY/AvgnwyUq4ItmU318BEm2ibYjiVVNl7BScT2WG/dOLslOq55QtKtzE2IRkgnOxUObcK8gJwGJp2Rq4u6bITXOFk0DDJhNlka5qkNaG90cMNAcwA981xYsgZwmZkiR904G11ZdlzSg0I3JaU5NboSnYcyRZcThcJjuKnQxmrXummjhcdFhsp5HZp0QBYKWvva0KA6mSmt4SWHVTOs2Uoaq6AGtliOe2Hge6cuC25UhxNWgxP8ApUgR6Sg24bnGYV2l20KKSeiY/wAoNgzbdOxW0Dim+ic1j2A0gmR1Xzb9ld0nOUKtFmrRfdPYdFhhxtKxaYilO/8AaLKbppa2kRGSp8wjC7JtL73m+aiM7dkLcJum7AynCuIKearhc0g5CELcVwiyVAKannclYO1SxGjMtsjF/VVcPuhJZb/NKmsxbdBxtCFDAdFEDa6pIilGlwudk+Dxc2ScfOpjKG9E0dSh3XL7Juycm0y5+ikzUM8l+r/emOLj2JmUacYsGkK/5ndcg9kQJA0uiDfr0Uug1Cyg0hH8yJGyJ8wkJtWclEDIKmEEXJjnH9V1iSQCW2C4Smhv7Z+6ABiP4XA7DMZSC0+6nE/D4jd6eIKtuLSRek3BTJGkTuqB9P8ARcJv1XQJpr59lNVlX1QOFi+a2NoPhqhIsg5pi1wQgScuiqlyocDBFK5rf6VBe72XznT7qznBR5gPcKtkknMBQWlkdLptOPwjpkmWv/dep/lPioEiIBWS0Vo9VoPVX/lZKwK5nt9FGKA5aBS37LNZlQ7iCJwnUnbQoRwnZUE3XC6fRAFsqRkcvi5oVUkjpcLjwWPPZfKDJ1KAaGvnortZ6BS1ggdFEhvoiQMQuabkK2K/38HYlbWNBiSjhuEFp+GrXRTUZQwcXiad1UzlK81mHWGZhB1IbpZWDfUSiHCoaU2R4l5bcby2uzQTo2T7AxjX9rLi4paJWre4VnMPquQq6ai+vy25TuqMTmFwd01ucp1OPhjdrgZV8dvsv8RJ6Yahvnu+hfKf9TgF+yI3MoN80YjidEaQ3F7mEXYuCXMdzNj2RdkNlTWaRorlWK53e6C/CVcpuUx7gRS+BOxXCvMDQZ3plcserVzf8ivPqVon1zS1qlrnN8ePDB9FspGJ9lZpK5T4eR+vDuOya0m5M0+FiVbFcuJoci9rKJ0UKGkOcbucr3Wqz8NlbwuFqq/wpMjeyJxMLFcd818ty5VlCupc5cGE5/UqThUdZXAW/Us/DNZStvg5vsrKVop8JKs1ZQs1lJ6eOfhl4bLNf0WcL+ymQfCy1Wa4l//EACYQAQACAgICAgIDAQEBAAAAAAEAESExQVFhcYGhkbHB0fDh8RD/2gAIAQEAAT8hcREt6uXpetys8yzgRTBo7ZYEGoFksvKsJOI6e5vuJTQ2wJdVlNwqgltxuFlln5qLgTIpSZOxYxzSzCXL7uU5gLw1KOpHWpZvqLQNkS0hFpcaqNuPW0nkivSwJKrlHIagW7FD5TdMC75TMgcpVV/cV8r1RGqoGTnEdqrdDJYUmFK7QNmXKmg/mK2UjTWL1DQYOHBnKOyV3+o1VKQ0dS3zeHqWVpxyA4+ZdAu93VzHvt1XdzK1Vty9LwXNQueQiv3BumNV2zIUC+Hb/wAjQoZD6zDO2sPDEH+cL8TNwN5cW12BHlS7gavgnH+uJpYLvdt/9liA2xa7ll+Eypt1U7DeU1NrXJiPI9kZbJl7/wCCK6Gb2sEKUW2D5HqUN9eG78xbd3LQ+oXfQhz3BVfxbBHGAEWsRmAtwHnl4hi3YDyiGbVXiQE79obHMcisVXAYJWnTQ3EXwv3M8A9/km58EOMk/SfpAuCrdDqbdZa8xWYsAtaj2fAwgSFeZ/aZkabV4lo3iKfqaYOxLjGYgXWy3+oj1lUK7cwnVyCvbEB5uT9RIqzucHwwyz/1RSw8vwzRmGNW2RmIGs06JYxs4lK7wooDjr1MBAAAF34lo2Votov4lxaq1TV4jbnYWK/1Rt2lNbl3W8nw/uYkJM8BmtZwD/NzMLKDfliCtVqX7jFOmsJqnhLZPP7iFGzZHmWyqyhpW8xRV/klvO5u+QPNRNCyudwzVRM5b7I0KX2IhJGX9j4/UZaArTtL+o1MmdJDaaANZcVHQrB07Y2lAdZMcVGexfDXLO669c3mOhGzoZbh9znTD+4C82a6Jusyju3/AJGmhWgG/EcPqhk+4D2yS/bVgY+C/qBd5Mq3d4z9Tpjz86iF6QjA8lqReKqvtzGaAeS2Zddxhb1MJAdDX+qCglk4Pcp1m3+4k/AVrPrqdgeczJmF3rxG0eWW5r45ZZJW+2uh/wBxVIO282zAgQL4mGyy5bM+lIH8SsbhjNCplO94Jxi+p+pRWs1/s9zVwKVpHYuAdoyza7n9piGpBOzEpHzKWoDasydj5g7DYysPiNJRwYLbw8MdGl5n1pKAYD3gYct/JUDsfFox7MeGALe0shQqbz/8IoCgzTUMB866uEGQX4E8wDWKlFLZXBFsA5SGJd33cW3PMSP2syDYWiGh2SpGBn5cAd1OlZ4XLtWPBHj6UtNxJY7WTiYso6/o/wB1OZl5jFOS8zxKIK9TLkwjxLO5T/6WA5V7Sxl9oxLhHInn644n2FcJxtaCL+YjSXs/2jXZVsT348ThM8UQtw28BtmO87ILljR0zCwZF4LNpSqpYHPF/UwLbMmpmX1Ff3Ob8Jf6i9h7Kjw92yroXIWr+o5Kip8O54mlG7gilwwPqdI/L+Y4CLqZr7mgFxVSUXycxSOXyvC/ETfcEzZT8cZEPSYahW19wyQ0AdEVGMUcIxarN6E6s+UyD5gEqbCXeVqXRjcnq/J9ywtu7K7lsDv/AGCWcfgP1G4/GdqXsZ0A+JRkvsrj+Z8CQy/Nn2S8Vx5jNr+YdD64hbQEV4vuqilP4Io2RZcuReVHgz1gOYxawemcQuluHB5NxOc4trL8RxFF8uCXu70F4COYLzNQ/vEDBli31MA/aFDJYt3nfcUMi9TN1d4IAC4nb8zl+lH7TSofJNaohn5J/wABKYgJiXPi+Ia0vbJ+I6k7zWWQH/Zjt2It7R8zT9CUdvuWevccgkxHB4YujIhwi3ax7ZfiCV07iTIJPkO4ombu4WZXkxr3gdSBmwPuX7ReKcdSo5yQjDrtmNs37lHGfCWNyhpk8rMxLv7Tza5YsKEj449zlNbeCLbaVtcuJUqD1c//2gAMAwEAAgADAAAAENs5d6i/q4pHywnLbH3btb8Un8xNnVpP8zRKUxA+b/iX1OIEoyBjLtJ+019RfyDO1/ryTsEngWqsGh0soAv/xAAnEQEAAgIBAQcFAQAAAAAAAAABABEhMUFRECBxgaHh8GGRscHR8f/aAAgBAwEBPxCU5lDGYQ2kQLev6hBLjLQ+XEz2EKlPzcWtRpqMxesS2b/yMcM3OYDmcyF0+bi03t+nhBGvSLF6RHWJVULnr7xIQ6vLN61jz59YtV3+Ht+5dwerhanWO1dePvAvEBHlmu5SsYrEVSbc7gO5lZluweB+fmDMDxOzxZ31DFic35SjnsQFsEHnnzz/ABhHhXWazKRs8kvyfRTMk7uZJi2obc58v9nIQlcOuNvWao+0FWfYTkt849lHiPFFQqCahHrZRx3s9z//xAAgEQEBAQEAAgICAwAAAAAAAAABABEhMUEQcWHwkaHh/9oACAECAQE/EPh1HJxiWuyA4bdRn82rYIokI65++IGoebM8Lm5z/bK8S0Gyz+LQTRmf1DNUvEeYBgQ/fqDeepJNIU3Lp9wrefMjq97NsXsb1sg+EuN9Xf4lfVC9ZHOL7sh4WpPgJcLQ1boo7hWw2HMJ6ZI6kSGwuGBtB+CxfUusyz41Dg12fZM48ErvZLLGy82WWfD/xAAkEAEBAAICAgIDAQEBAQAAAAABEQAhMUFRYYGRcaGxwdHw8f/aAAgBAQABPxAHbjIIDo7nnBzEDduv/TBJWdsCEan9wgkZs4mSDD/bNrJQlSvJ4yeMxFzsnlbk6ssW8CR3xzm8yBhq36yAeqhOc1J0Ayk3/mEQAApr3+nAGTUNbGn1jOvK5QPCmTC+UTRN8Gs7DWpt0PPZlcDBLn5anvUmEO0QfArwdHOvdm9BsBtoAQZOF3vk/OXicEq3VwmxvkwjSgXkNLvYiJ3Dd1yW8tImWnstW1S7MGwBQ2vfXLv6ymoj5Sq/vWNTNMGdF2e3vfOIW4orU6MArgEA2Ur3sfnCDIgcR2H/ALXrFaDWhDWfvFb80TADrjk7q+jLJRwkQnlJT/5haPE1DY+taXJBlBsgWQee8QpHBKnMfx/uA+CQctXU+8XJm+2NIp54Lx4xEC1Icfb8cX9454HaAAloVlia5HeXuQ7c7DnNH1kIFUFTj84MDcbIzZE/+4PqWcR0w2czcxgbSFJBF6mJiNjsu1A+dSYxnQEBoa0nNxzE6EJ0ibnNx4H+23qCx5KXDI2UNKT08cePeTIwkgXSnCVM56xk0i4I3QRVajxO8oKxpB4PXOA4hEV75m/c0YIGAEGIboe//GKaVqA09es0RPFA87XQd3IaZio1BYW6Tb5dcZ3N0cqeJIjya312GPNKTspvYm3duAItQqV3LtNekrkRQgLufSlmacTmr4r1reMO4bEVlLuLaYqB04zed3z+cQgJaBTf8UcVfAiJ0t5Jd+esW07RZLA3L65+MuTSI2NS9b4y1DAzYaefWzJCGgqEj/3FjRV0B44Z1vEI0wAdaYs31munjRIDS65N3W8DYgFZBoCeOMb6FL5wKXHCFhLrvHKVxh3pxdJ5xRKNvVZ0b+fnvGBKBJaCIc283jAu3ZNh2q+AwvxtIH0j3p143rAVCG7nVPT1eMIClbBRSvIXR19YVNkItER7lY4O4ncNnJ2EyD9bkEkd/vA0AKaEe080iZzh4jA12Nr5NefGbBgS0c/n7xxG6CdAn6xTd0KNb5MCYE2C4osrghykIcTw+RyqUE4WPuTFpKF3jZ5NqzRsIKo0oxwh7vrGrO11BLIPhdP4yg6EadRZtu8nJXYJQgk6HCY1bSJkvOxP4YgDPtTupPFes0RmNj2Nu+OJ5TIFhQJpCNbKrHsiwRbsvzlNykmoM78YylUCEBN/rb84e1pSjavV8eveTNKcL4jA7eIQESuz7UPzg76Ub4lvXfZibbJripT9OaEUJCRVPEKZqgM1rTX+amGCpreo4BXns6dnZgC12SEPP+4nIWz9K8rjW0ZzVoCrsIkDYm+7swU9AqR0o2b66RMrPm2U/M8Esu8RXQ5hEZfg+8khC7kgR5Ca5MWik6LXEHGV3E4nT8ndXZkACyRTR18X7wo73tL94iK2Avd138YTiTLAXnAHleBV9H4OHVqcqsH9y8SDPYn+AfLlvIg50B9IYSA7mDoBPHOGHEvAKKDrnbjH6QcFQi1ozsTeCpMqy1ArsO6m/wA5WVQfjsPuHyD21ydxlKNcMOpMbENwMBVjeM2fiuoC6L5P2w4QFt5rRd+d4Dwd5dEn+4dodhE3ynV8iPWVCvBGzcQBbQnL5PnJ+gHYZ4N4A/ZuYRRHhxFyJwlG9+mLWFSDZy8ebrHUDqIaQb09/GKvtjYuHZB/OXfXEf5cKtwISuxxOKdy4DYEKQjzzhPsuICcR/bFGixiHC2jF1zRe8NyQTgm+TbTGHMWoFvU6rfnNw3ARoVfxfvCC9v8bf8AMWlYcUbQcOl0dXCXCKA/GVCAXg0PWFDeFFSd43El06DxvLND9AyFj6h/cpCcoVXr/c3PyHk/hhkJ94RH+HT+sJ071d9msHriVAif7klBaOJvNJocME/D/wCMviNwvkHA1NN8AsK7c+sYE4MqheF8kyDzrDtJY++cFHJlNnmFfH6zZnBcfR2yZdAhvTj7E75yRw3OJ/A1hp8PdNuJmkVwc9f5gJQHgnkTosWdKN17kwe+Elvnd148bwWhkdSrBFZwdqdXEcSIUjfOiSfiNwKgmNB9zeRHIonab5d8e82mCmBcbmzKMbDVBIgk0r5301hBQHRZJgbIxMHJigJgdXsqkJK+zWf5EWp93OZQE8YNw34yJNnxkHLhFBoHsudlGoyficY0cq9nr3f3l8CcGxfR6/7nePGST2Tn2IOzuZujFAIeaCcdHmvAZBkdg/o/WOgRPacIAfJN67yg7tdcHgGbJ3hE94wBCXYuhR4LyYxpUY8CGtYqTQMmzvnA83E0LCcgzVLJ5wWkBpMkdtwYo0eJcHhEl+sB+ujfiMZ7J5l+6yqFfd/WK7AaPzrFRPkt8zYAoVedGFtGJ10j5HXSZJCoBVeAdtuspvQIOI78IOxfvKJZ83gLbtrJeKx9XBjvKOYtir5fvC4k7N9+R3jyagK/dQmaGKumw0HLG5tRFSAnUn+/OHdKiEaiaRUvEd419BcSIF7fflcScgQIAgSesrcu4D+sXqnrT9maxbwWPpuX4RFryrvGDKFseE9usSwsYd5GnMFPQwsQDZEDpHpwC/Gimmq7tzzmrNnZ/CzTROJhfg1nMP3oPvINU87ZRhqgwgNOOD6Y20WCRfoxUmx1+jnJZN6kfzDYcQSVxNw9Eg+t/vBA2cbF6xKF7bgPO9Y3qHiv5i+wfZjuPuMC0/Co+KY8kvR2++9rPDHEq+8FJThQmDBI8B+8FlnsP1rIGDngfLoQeZ+ceZHKw9r0YzPYL+QNwOPNXvEEQOqmvc5yB5SyYgEK8o/5MbSHjYMENpzKxqZvIJlYIjgax8HYXXGVt3Itvbz+8S4tPm4GD9fnGwljtz8mnzhA2ulMjUL1MDTHnT9YNoB5UZUJMj/mTr3siD0LfymIODsCeCB+cnSKCsPrevjCIpsm3eEGV7rw+MUtjpQJ8YwgrwE/3AgDX0a+sAQK62/zHdL2aN4kgac6/mFRXcIQ9TAAFQmxL8cGFQEJ2Dx7zTSuCqD4F5zTBfMYwIO1v6LgJi1pov8AcUmo5C/vRiCLi8Rx77woTl5d/wAzVKrxp+rhoW+QiyRVbWmv7iCiG7P6YasBb19YCkRxQt67ybuHhg/eUfhAGZdCE6tciqvOj/GIhC8k2+kd/WIo81QlH1zMsDHKcn5JnTwdqr/zG0d4yH03W+NZIMOKs/WFRLoUP+YEoCzz+f8A5n//2Q==', caption: 'a red car on a street', short: 'car' },
+];
+
+window.XP.MODELS = [
+  { name: 'MERU', r1: 0.53 },
+  { name: 'HyCoCLIP', r1: 0.40 },
+  { name: 'ARGENT', r1: 0.74 },
+  { name: 'PHyCLIP', r1: 0.47 },
+];
+})();
+</script>
+
+<script>
+// Figure 1 (hover): CLIP-style contrastive pre-training. Captions go through the
+// text encoder, images through the image encoder, and every image vector is
+// compared with every text vector. Hovering a cell highlights what it compares.
+(function () {
+const { el, photo } = window.XP;
+
+const root = document.getElementById('fig-clip');
+if (!root) return;
+const svg = root.querySelector('svg');
+
+const PAIRS = window.XP.PAIRS;
+const N = PAIRS.length;
+const CELL = 75, MX = 572, MY = 150;          // similarity matrix
+const colX = (j) => MX + CELL * (j + 0.5);
+const rowY = (i) => MY + CELL * (i + 0.5);
+const SUB = ['₁', '₂', '₃'];
+
+function arrow(x1, y1, x2, y2) {
+  el('line', { class: 'cl-arrow', x1, y1, x2, y2 }, svg);
+  const a = Math.atan2(y2 - y1, x2 - x1), s = 7;
+  el('path', {
+    class: 'cl-head',
+    d: `M${x2} ${y2}L${x2 - s * Math.cos(a - 0.45)} ${y2 - s * Math.sin(a - 0.45)}L${x2 - s * Math.cos(a + 0.45)} ${y2 - s * Math.sin(a + 0.45)}Z`,
+  }, svg);
+}
+
+function vecLabel(x, y, letter, i) {
+  const t = el('text', { class: 'cl-vec', x, y: y + 5, 'text-anchor': 'middle' }, svg);
+  t.textContent = letter + SUB[i];
+  return t;
+}
+
+let hover = null;
+
+function draw() {
+  svg.replaceChildren();
+
+  // ---- text branch (top) ----
+  el('rect', { class: 'cl-panel', x: 250, y: 22, width: 270, height: 84, rx: 4 }, svg);
+  PAIRS.forEach((p, j) => {
+    const t = el('text', { class: 'cl-caption' + (hover && hover[1] === j ? ' is-hi' : ''), x: 266, y: 48 + 24 * j }, svg);
+    t.textContent = `“${p.caption}”`;
+  });
+  arrow(522, 56, 566, 56);
+  el('rect', { class: 'cl-encoder', x: MX, y: 32, width: CELL * N, height: 48, rx: 6 }, svg);
+  el('text', { class: 'cl-encoder-label', x: MX + (CELL * N) / 2, y: 61, 'text-anchor': 'middle' }, svg).textContent = 'Text encoder';
+  PAIRS.forEach((_, j) => {
+    arrow(colX(j), 82, colX(j), 98);
+    el('rect', { class: 'cl-vbox' + (hover && hover[1] === j ? ' is-hi' : ''), x: colX(j) - 26, y: 102, width: 52, height: 30, rx: 4 }, svg);
+    vecLabel(colX(j), 117, 'T', j);
+  });
+
+  // ---- image branch (left) ----
+  PAIRS.forEach((p, i) => {
+    photo(svg, p.img, 351, rowY(i), 58, 6);
+    el('rect', { class: 'cl-tile' + (hover && hover[0] === i ? ' is-hi' : ''), x: 322, y: rowY(i) - 29, width: 58, height: 58, rx: 6 }, svg);
+    arrow(384, rowY(i), 404, rowY(i));
+  });
+  el('rect', { class: 'cl-encoder', x: 408, y: MY, width: 70, height: CELL * N, rx: 6 }, svg);
+  el('text', {
+    class: 'cl-encoder-label', x: 443, y: MY + (CELL * N) / 2 + 5, 'text-anchor': 'middle',
+    transform: `rotate(-90 443 ${MY + (CELL * N) / 2})`,
+  }, svg).textContent = 'Image encoder';
+  PAIRS.forEach((_, i) => {
+    arrow(480, rowY(i), 506, rowY(i));
+    el('rect', { class: 'cl-vbox' + (hover && hover[0] === i ? ' is-hi' : ''), x: 510, y: rowY(i) - 15, width: 52, height: 30, rx: 4 }, svg);
+    vecLabel(536, rowY(i), 'I', i);
+  });
+
+  // ---- similarity matrix ----
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < N; j++) {
+      const diag = i === j, hi = hover && hover[0] === i && hover[1] === j;
+      const g = el('g', { class: 'cl-cell' + (diag ? ' is-diag' : '') + (hi ? ' is-hi' : '') }, svg);
+      el('rect', { x: MX + CELL * j + 2, y: MY + CELL * i + 2, width: CELL - 4, height: CELL - 4, rx: 3 }, g);
+      const t = el('text', { x: colX(j), y: rowY(i) + 5, 'text-anchor': 'middle' }, g);
+      t.textContent = `I${SUB[i]}·T${SUB[j]}`;
+      g.addEventListener('pointerenter', () => { hover = [i, j]; draw(); });
+    }
+  }
+
+  // ---- explanation of the hovered cell ----
+  const lines = [];
+  if (!hover) {
+    lines.push(['cl-info-head', 'One comparison per cell']);
+    lines.push(['cl-info', 'Every image vector is compared with']);
+    lines.push(['cl-info', 'every text vector in the batch.']);
+    lines.push(['cl-info', 'Hover over a cell.']);
+  } else {
+    const [i, j] = hover;
+    const match = i === j;
+    lines.push(['cl-info-head', match ? 'A matching pair' : 'A mismatch']);
+    lines.push(['cl-info', `the ${PAIRS[i].short} photo with “${PAIRS[j].caption}”`]);
+    lines.push(['cl-info', match ? 'Training pushes this similarity up.' : 'Training pushes this similarity down.']);
+  }
+  lines.forEach(([cls, text], k) => {
+    el('text', { class: cls, x: 24, y: 196 + 24 * k }, svg).textContent = text;
+  });
+}
+
+svg.addEventListener('pointerleave', () => { hover = null; draw(); });
+draw();
+})();
+</script>
+
+<script>
+// Figure 2 (interactive): contrastive learning on a sphere. Each embedding is a
+// unit vector in R^3. Train runs Riemannian gradient descent on the symmetric
+// contrastive loss: matching pairs align and the pairs spread apart. Drag a
+// point to move it over the sphere, or drag the sphere to rotate the view.
+(function () {
+const { el, svgPoint, photo } = window.XP;
+
+const root = document.getElementById('fig-contrast');
+if (!root) return;
+const svg = root.querySelector('svg');
+const q = (role) => root.querySelector(`[data-role="${role}"]`);
+
+const PAIRS = window.XP.PAIRS;
+const N = PAIRS.length;
+const TAU = 0.3, LR = 0.12;
+const CX = 215, CY = 198, R = 128;            // the sphere on screen
+const MX = 560, MY = 92, CELL = 82;           // the similarity matrix
+
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const unit = (v) => { const n = Math.hypot(...v) || 1; return v.map((x) => x / n); };
+const sph = (lon, lat) => {
+  const a = (lon * Math.PI) / 180, b = (lat * Math.PI) / 180;
+  return [Math.cos(b) * Math.cos(a), Math.sin(b), Math.cos(b) * Math.sin(a)];
+};
+const START = {
+  img: [sph(10, 35), sph(150, -20), sph(260, 50)],
+  txt: [sph(200, 10), sph(310, -45), sph(80, -10)],
+};
+
+const state = {
+  img: START.img.map((v) => v.slice()), txt: START.txt.map((v) => v.slice()),
+  steps: 0, running: false, drag: null, yaw: 0.5, pitch: 0.35,
+};
+
+// ---- the loss and its gradient ---------------------------------------------
+function softmax(xs) {
+  const m = Math.max(...xs);
+  const e = xs.map((x) => Math.exp(x - m));
+  const s = e.reduce((a, b) => a + b, 0);
+  return e.map((x) => x / s);
+}
+
+function lossAndGrad() {
+  const S = state.img.map((u) => state.txt.map((w) => dot(u, w) / TAU));
+  const P = S.map(softmax);                                                     // image -> captions
+  const Qc = [...Array(N).keys()].map((j) => softmax(S.map((row) => row[j])));  // caption -> images
+  let loss = 0;
+  for (let i = 0; i < N; i++) loss -= Math.log(P[i][i]) + Math.log(Qc[i][i]);
+  loss /= 2 * N;
+  const gImg = state.img.map(() => [0, 0, 0]), gTxt = state.txt.map(() => [0, 0, 0]);
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < N; j++) {
+      const d = i === j ? 1 : 0;
+      const G = (P[i][j] - d + Qc[j][i] - d) / (2 * N) / TAU;  // dL / d(u_i . w_j)
+      for (let k = 0; k < 3; k++) {
+        gImg[i][k] += G * state.txt[j][k];
+        gTxt[j][k] += G * state.img[i][k];
+      }
+    }
+  }
+  // keep only the part of each gradient that moves along the sphere
+  const tangent = (g, u) => { const s = dot(g, u); return g.map((x, k) => x - s * u[k]); };
+  return { loss, gImg: gImg.map((g, i) => tangent(g, state.img[i])), gTxt: gTxt.map((g, j) => tangent(g, state.txt[j])) };
+}
+
+function step() {
+  const { gImg, gTxt } = lossAndGrad();
+  state.img = state.img.map((u, i) => unit(u.map((x, k) => x - LR * gImg[i][k])));
+  state.txt = state.txt.map((w, j) => unit(w.map((x, k) => x - LR * gTxt[j][k])));
+  state.steps++;
+}
+
+// ---- view -------------------------------------------------------------------
+// World -> view: rotate by yaw about the vertical axis, then tilt by pitch.
+function toView(v) {
+  const cy = Math.cos(state.yaw), sy = Math.sin(state.yaw);
+  const cp = Math.cos(state.pitch), sp = Math.sin(state.pitch);
+  const x = cy * v[0] - sy * v[2];
+  const z1 = sy * v[0] + cy * v[2];
+  return [x, cp * v[1] - sp * z1, sp * v[1] + cp * z1];   // [right, up, towards the viewer]
+}
+function fromView(v) {
+  const cy = Math.cos(state.yaw), sy = Math.sin(state.yaw);
+  const cp = Math.cos(state.pitch), sp = Math.sin(state.pitch);
+  const y = cp * v[1] + sp * v[2];
+  const z1 = -sp * v[1] + cp * v[2];
+  return [cy * v[0] + sy * z1, y, -sy * v[0] + cy * z1];
+}
+const screen = (v, r = R) => { const p = toView(v); return [CX + r * p[0], CY - r * p[1], p[2]]; };
+
+// Great and small circles of the wireframe, split into front and back parts.
+function wire(pts) {
+  let front = '', back = '', prev = null;
+  pts.forEach((v) => {
+    const [x, y, z] = screen(v);
+    const side = z >= 0 ? 'f' : 'b';
+    const seg = `${x.toFixed(1)} ${y.toFixed(1)}`;
+    if (side === 'f') front += (prev === 'f' ? 'L' : 'M') + seg;
+    else back += (prev === 'b' ? 'L' : 'M') + seg;
+    prev = side;
+  });
+  return { front, back };
+}
+
+// ---- drawing ----------------------------------------------------------------
+function draw() {
+  svg.replaceChildren();
+  el('text', { class: 'ct-title', x: CX, y: 14, 'text-anchor': 'middle' }, svg).textContent = 'latent space (unit sphere)';
+
+  // sphere body and wireframe
+  // light shading, lit from the upper left, so the disc reads as a ball
+  const grad = el('radialGradient', { id: 'ct-shade', cx: '0.36', cy: '0.32', r: '0.75' }, el('defs', {}, svg));
+  el('stop', { offset: '0', style: 'stop-color: var(--eq-bg)' }, grad);
+  el('stop', { offset: '1', style: 'stop-color: var(--paper-raise)' }, grad);
+  el('circle', { class: 'ct-sphere', cx: CX, cy: CY, r: R, fill: 'url(#ct-shade)' }, svg);
+  let front = '', back = '';
+  for (let lat = -60; lat <= 60; lat += 30) {
+    const w = wire(Array.from({ length: 73 }, (_, i) => sph(i * 5, lat)));
+    front += w.front; back += w.back;
+  }
+  for (let lon = 0; lon < 180; lon += 30) {
+    const w = wire(Array.from({ length: 73 }, (_, i) => {
+      const t = (i * 5 * Math.PI) / 180;
+      const a = (lon * Math.PI) / 180;
+      return [Math.cos(t) * Math.cos(a), Math.sin(t), Math.cos(t) * Math.sin(a)];
+    }));
+    front += w.front; back += w.back;
+  }
+  el('path', { class: 'ct-wire is-back', d: back }, svg);
+  el('path', { class: 'ct-wire', d: front }, svg);
+  el('circle', { class: 'ct-rim', cx: CX, cy: CY, r: R }, svg);
+  el('circle', { class: 'ct-origin', cx: CX, cy: CY, r: 3 }, svg);
+
+  // points, drawn back to front; points behind the sphere are faded
+  const items = [];
+  PAIRS.forEach((p, k) => {
+    items.push({ kind: 'txt', k, v: state.txt[k] });
+    items.push({ kind: 'img', k, v: state.img[k] });
+  });
+  items.forEach((it) => { it.s = screen(it.v); });
+  items.sort((a, b) => a.s[2] - b.s[2]);
+  items.forEach(({ kind, k, s: [x, y, z] }) => {
+    const g = el('g', { class: 'ct-point' + (z < 0 ? ' is-back' : '') }, svg);
+    el('line', { class: 'ct-vec', x1: CX, y1: CY, x2: x, y2: y, style: `stroke: var(--pair-${k + 1})` }, g);
+    // labels sit on the side facing away from the centre of the disc
+    let dx = x - CX, dy = y - CY;
+    const n = Math.hypot(dx, dy);
+    if (n < 1e-6) { dx = 0; dy = -1; } else { dx /= n; dy /= n; }
+    if (kind === 'txt') {
+      el('circle', { class: 'ct-ring', cx: x, cy: y, r: 13, style: `stroke: var(--pair-${k + 1})` }, g);
+      el('text', { class: 'ct-word', x: x - 34 * dx, y: y - 34 * dy + 4, 'text-anchor': 'middle' }, g).textContent = `“${PAIRS[k].short}”`;
+    } else {
+      el('rect', { class: 'ct-square', x: x - 7, y: y - 7, width: 14, height: 14, rx: 2, style: `fill: var(--pair-${k + 1})` }, g);
+      photo(g, PAIRS[k].img, x + 32 * dx, y + 32 * dy, 34, 4);
+    }
+  });
+
+  // similarity matrix
+  el('text', { class: 'ct-title', x: MX + (CELL * N) / 2, y: 24, 'text-anchor': 'middle' }, svg).textContent = 'cosine similarity';
+  PAIRS.forEach((p, j) => {
+    el('text', { class: 'ct-word', x: MX + CELL * (j + 0.5), y: MY - 14, 'text-anchor': 'middle' }, svg).textContent = `“${p.short}”`;
+  });
+  PAIRS.forEach((p, i) => {
+    photo(svg, p.img, MX - 30, MY + CELL * (i + 0.5), 44, 4);
+    PAIRS.forEach((_, j) => {
+      const c = dot(state.img[i], state.txt[j]);
+      const x = MX + CELL * j, y = MY + CELL * i;
+      el('rect', { class: 'ct-cell-bg', x: x + 2, y: y + 2, width: CELL - 4, height: CELL - 4, rx: 3 }, svg);
+      el('rect', { class: 'ct-cell', x: x + 2, y: y + 2, width: CELL - 4, height: CELL - 4, rx: 3, 'fill-opacity': ((c + 1) / 2) * 0.85 }, svg);
+      if (i === j) el('rect', { class: 'ct-diag', x: x + 2, y: y + 2, width: CELL - 4, height: CELL - 4, rx: 3 }, svg);
+      el('text', { class: 'ct-val' + (c > 0.35 ? ' on-dark' : ''), x: x + CELL / 2, y: y + CELL / 2 + 5, 'text-anchor': 'middle' }, svg)
+        .textContent = (c < 0 ? '−' : '') + Math.abs(c).toFixed(2);
+    });
+  });
+
+  // readout
+  const { loss } = lossAndGrad();
+  let acc = 0;
+  for (let i = 0; i < N; i++) {
+    const row = state.txt.map((w) => dot(state.img[i], w));
+    if (row.indexOf(Math.max(...row)) === i) acc++;
+  }
+  q('steps').textContent = String(state.steps);
+  q('loss').textContent = loss.toFixed(3);
+  q('acc').textContent = `${acc} / ${N}`;
+}
+
+// ---- controls ---------------------------------------------------------------
+const trainBtn = q('train');
+function loop() {
+  if (!state.running) return;
+  step();
+  draw();
+  const { gImg, gTxt } = lossAndGrad();
+  if ([...gImg, ...gTxt].every((g) => Math.hypot(...g) < 5e-3)) setRunning(false);
+  else requestAnimationFrame(loop);
+}
+function setRunning(on) {
+  state.running = on;
+  trainBtn.textContent = on ? 'Pause' : 'Train';
+  if (on) requestAnimationFrame(loop);
+}
+trainBtn.addEventListener('click', () => setRunning(!state.running));
+
+q('shuffle').addEventListener('click', () => {
+  const g = () => { const u = Math.random(), v = Math.random(); return Math.sqrt(-2 * Math.log(u || 1e-9)) * Math.cos(2 * Math.PI * v); };
+  const rand = () => unit([g(), g(), g()]);
+  state.img = state.img.map(rand);
+  state.txt = state.txt.map(rand);
+  state.steps = 0;
+  draw();
+});
+
+// Drag a visible point over the sphere, or drag anywhere else to rotate.
+function pick(p) {
+  let best = null, bestD = 20;
+  ['img', 'txt'].forEach((kind) => state[kind].forEach((v, k) => {
+    const [x, y, z] = screen(v);
+    const d = Math.hypot(p.x - x, p.y - y);
+    if (z >= -0.05 && d < bestD) { bestD = d; best = { kind, k }; }
+  }));
+  return best;
+}
+svg.addEventListener('pointerdown', (ev) => {
+  const p = svgPoint(svg, ev);
+  const hit = pick(p);
+  if (hit) state.drag = hit;
+  else if (Math.hypot(p.x - CX, p.y - CY) <= R + 40) state.drag = { rotate: true, x: p.x, y: p.y, yaw: state.yaw, pitch: state.pitch };
+  else return;
+  svg.setPointerCapture(ev.pointerId);
+  svg.classList.add('is-dragging');
+});
+svg.addEventListener('pointermove', (ev) => {
+  const p = svgPoint(svg, ev);
+  const d = state.drag;
+  if (!d) {
+    svg.style.cursor = pick(p) ? 'grab' : Math.hypot(p.x - CX, p.y - CY) <= R + 40 ? 'move' : 'default';
+    return;
+  }
+  if (d.rotate) {
+    state.yaw = d.yaw + (p.x - d.x) * 0.012;
+    state.pitch = Math.max(-1.4, Math.min(1.4, d.pitch + (p.y - d.y) * 0.012));
+  } else {
+    // the point under the cursor on the front of the sphere (or on its rim)
+    let x = (p.x - CX) / R, y = (CY - p.y) / R;
+    const r = Math.hypot(x, y);
+    if (r > 1) { x /= r; y /= r; }
+    state[d.kind][d.k] = unit(fromView([x, y, Math.sqrt(Math.max(0, 1 - x * x - y * y))]));
+  }
+  draw();
+});
+const end = () => { state.drag = null; svg.classList.remove('is-dragging'); };
+svg.addEventListener('pointerup', end);
+svg.addEventListener('pointercancel', end);
+
+draw();
+})();
+</script>
+
+<script>
+// Figure 3 (hover): a hierarchy across modalities. Words at the top, captions
+// below them, images at the bottom. Hovering a node highlights its path to the
+// root: everything that node falls under.
+(function () {
+const { el, photo } = window.XP;
+
+const root = document.getElementById('fig-tree');
+if (!root) return;
+const svg = root.querySelector('svg');
+const PAIRS = window.XP.PAIRS;
+
+const COL = [230, 460, 690];            // x of the three branches
+const LEVEL = [40, 115, 190, 265, 345]; // y of each level
+const NODES = [
+  { id: 'thing', label: 'thing', x: 460, level: 0 },
+  { id: 'animal', label: 'animal', x: (COL[0] + COL[1]) / 2, level: 1, parent: 'thing' },
+  { id: 'vehicle', label: 'vehicle', x: COL[2], level: 1, parent: 'thing' },
+  { id: 'dog', label: 'dog', x: COL[0], level: 2, parent: 'animal' },
+  { id: 'cat', label: 'cat', x: COL[1], level: 2, parent: 'animal' },
+  { id: 'car', label: 'car', x: COL[2], level: 2, parent: 'vehicle' },
+  ...PAIRS.map((p, k) => ({ id: `cap${k}`, label: `“${p.caption}”`, x: COL[k], level: 3, parent: ['dog', 'cat', 'car'][k], kind: 'caption' })),
+  ...PAIRS.map((p, k) => ({ id: `img${k}`, img: p.img, x: COL[k], level: 4, parent: `cap${k}`, kind: 'image' })),
+];
+const byId = Object.fromEntries(NODES.map((n) => [n.id, n]));
+
+let hover = null;
+function ancestors(id) {
+  const out = new Set();
+  for (let n = byId[id]; n; n = byId[n.parent]) out.add(n.id);
+  return out;
+}
+
+function draw() {
+  svg.replaceChildren();
+  const on = hover ? ancestors(hover) : null;
+
+  // general -> specific axis on the left
+  el('line', { class: 'tr-axis', x1: 40, y1: LEVEL[0] - 8, x2: 40, y2: LEVEL[4] + 20 }, svg);
+  el('path', { class: 'tr-axis-head', d: `M40 ${LEVEL[4] + 28}l-5 -9h10z` }, svg);
+  el('text', { class: 'tr-axis-label', x: 52, y: LEVEL[0] + 4 }, svg).textContent = 'general';
+  el('text', { class: 'tr-axis-label', x: 52, y: LEVEL[4] + 24 }, svg).textContent = 'specific';
+
+  // edges
+  NODES.filter((n) => n.parent).forEach((n) => {
+    const p = byId[n.parent];
+    const hi = on && on.has(n.id) && on.has(p.id);
+    const y1 = LEVEL[p.level] + (p.kind === 'caption' ? 12 : 13);
+    const y2 = LEVEL[n.level] - (n.kind === 'image' ? 32 : 13);
+    el('line', { class: 'tr-edge' + (hi ? ' is-hi' : ''), x1: p.x, y1, x2: n.x, y2 }, svg);
+  });
+
+  // nodes
+  NODES.forEach((n) => {
+    const hi = on && on.has(n.id);
+    const dim = on && !hi;
+    const g = el('g', { class: 'tr-node' + (hi ? ' is-hi' : '') + (dim ? ' is-dim' : '') }, svg);
+    const y = LEVEL[n.level];
+    if (n.kind === 'image') {
+      photo(g, n.img, n.x, y, 62, 6);
+      el('rect', { class: 'tr-frame', x: n.x - 31, y: y - 31, width: 62, height: 62, rx: 6 }, g);
+    } else {
+      // the pill is sized to the label once the label has been laid out
+      const pill = el('rect', { class: 'tr-pill', y: y - 13, height: 26, rx: 13 }, g);
+      const t = el('text', { class: n.kind === 'caption' ? 'tr-caption' : 'tr-word', x: n.x, y: y + 5, 'text-anchor': 'middle' }, g);
+      t.textContent = n.label;
+      const w = t.getComputedTextLength();
+      pill.setAttribute('x', n.x - w / 2 - 10);
+      pill.setAttribute('width', w + 20);
+    }
+    g.addEventListener('pointerenter', () => { hover = n.id; draw(); });
+  });
+}
+
+svg.addEventListener('pointerleave', () => { hover = null; draw(); });
+draw();
+if (document.fonts) document.fonts.ready.then(draw); // pills are sized to the final font
+})();
+</script>
+
+<script>
+// Figure 4 (interactive): a tree in the Poincaré disk. Every edge has the same
+// hyperbolic length, and every node has the same number of neighbours, spaced
+// evenly around it (as in Sarkar's construction). Click a node to move it to the
+// centre with a Möbius transformation, an isometry of the hyperbolic plane: the
+// tree looks the same from every node, and there is always room for more.
+(function () {
+const { el, svgPoint } = window.XP;
+
+const root = document.getElementById('fig-disk');
+if (!root) return;
+const svg = root.querySelector('svg');
+const q = (role) => root.querySelector(`[data-role="${role}"]`);
+
+const EDGE = 1;                    // hyperbolic length of every edge
+const CX = 430, CY = 225, RPX = 205;
+
+// ---- complex numbers as [re, im] ----------------------------------------------
+const add = (a, b) => [a[0] + b[0], a[1] + b[1]];
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1]];
+const mul = (a, b) => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]];
+const div = (a, b) => { const d = b[0] * b[0] + b[1] * b[1]; return [(a[0] * b[0] + a[1] * b[1]) / d, (a[1] * b[0] - a[0] * b[1]) / d]; };
+const conj = (a) => [a[0], -a[1]];
+const abs = (a) => Math.hypot(a[0], a[1]);
+const polar = (r, t) => [r * Math.cos(t), r * Math.sin(t)];
+
+// Möbius maps of the disk: to(a) sends a to 0, from(a) sends 0 back to a.
+const to = (a) => (z) => div(sub(z, a), sub([1, 0], mul(conj(a), z)));
+const from = (a) => (z) => div(add(z, a), add([1, 0], mul(conj(a), z)));
+
+// ---- the tree -----------------------------------------------------------------
+// Every node has degree b + 1: the root has b + 1 neighbours, every other node b
+// children and its parent.
+function build(b, depth) {
+  const r = Math.tanh(EDGE / 2);   // Poincaré radius of a point at distance EDGE from 0
+  const nodes = [{ z: [0, 0], d: 0, parent: -1 }];
+  for (let k = 0; k <= b; k++) nodes.push({ z: polar(r, (2 * Math.PI * k) / (b + 1) + Math.PI / 2), d: 1, parent: 0 });
+  for (let i = 1; i < nodes.length; i++) {
+    const n = nodes[i];
+    if (n.d >= depth) continue;
+    // in the frame where n sits at 0, its parent lies in direction phi; the
+    // children take the other b of b + 1 evenly spaced directions
+    const back = to(n.z)(nodes[n.parent].z);
+    const phi = Math.atan2(back[1], back[0]);
+    for (let k = 1; k <= b; k++) {
+      nodes.push({ z: from(n.z)(polar(r, phi + (2 * Math.PI * k) / (b + 1))), d: n.d + 1, parent: i });
+    }
+  }
+  return nodes;
+}
+
+// ---- Poincaré geodesics -------------------------------------------------------
+function geodesic(p, q, n = 20) {
+  const cross = p[0] * q[1] - p[1] * q[0];
+  const pp = p[0] * p[0] + p[1] * p[1], qq = q[0] * q[0] + q[1] * q[1];
+  if (Math.abs(cross) < 1e-12 * Math.max(1, pp, qq)) return [p, q];
+  if (pp < 1e-12 || qq < 1e-12) return [p, q];
+  const inv = [p[0] / pp, p[1] / pp];
+  const [ax, ay] = p, [bx, by] = q, [cx, cy] = inv;
+  const D = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
+  const ux = ((ax * ax + ay * ay) * (by - cy) + (bx * bx + by * by) * (cy - ay) + (cx * cx + cy * cy) * (ay - by)) / D;
+  const uy = ((ax * ax + ay * ay) * (cx - bx) + (bx * bx + by * by) * (ax - cx) + (cx * cx + cy * cy) * (bx - ax)) / D;
+  const rr = Math.hypot(ax - ux, ay - uy);
+  if (!isFinite(rr) || rr > 1e4) return [p, q];
+  const a1 = Math.atan2(ay - uy, ax - ux);
+  let a2 = Math.atan2(by - uy, bx - ux);
+  if (a2 - a1 > Math.PI) a2 -= 2 * Math.PI;
+  if (a1 - a2 > Math.PI) a2 += 2 * Math.PI;
+  return Array.from({ length: n + 1 }, (_, k) => polar(rr, a1 + ((a2 - a1) * k) / n).map((v, i) => v + (i ? uy : ux)));
+}
+
+// ---- state and drawing --------------------------------------------------------
+const state = { b: 2, depth: 6, centre: [0, 0], focus: 0, anim: null };
+let nodes = build(state.b, state.depth);
+let screen = [];
+
+const P = (z) => [CX + z[0] * RPX, CY - z[1] * RPX];
+
+function draw() {
+  svg.replaceChildren();
+  el('circle', { class: 'pd-bg', cx: CX, cy: CY, r: RPX }, svg);
+
+  const T = to(state.centre);
+  const zs = nodes.map((n) => T(n.z));
+
+  let d = '';
+  nodes.forEach((n, i) => {
+    if (n.parent < 0) return;
+    const a = zs[n.parent], c = zs[i];
+    if (1 - abs(a) < 2e-4 && 1 - abs(c) < 2e-4) return;   // too small to see
+    d += geodesic(a, c).map((p, k) => (k ? 'L' : 'M') + P(p).map((v) => v.toFixed(1)).join(' ')).join('');
+  });
+  el('path', { class: 'pd-edge', d }, svg);
+
+  // each node is drawn as a disc of fixed hyperbolic size, so it shrinks
+  // towards the rim exactly as the edges do
+  screen = [];
+  nodes.forEach((n, i) => {
+    const z = zs[i];
+    const r = 7 * (1 - z[0] * z[0] - z[1] * z[1]);
+    if (r < 0.35) return;
+    const [x, y] = P(z);
+    el('circle', { class: 'pd-node' + (i === state.focus ? ' is-focus' : ''), cx: x, cy: y, r }, svg);
+    screen.push({ i, x, y, r });
+  });
+
+  el('circle', { class: 'pd-rim', cx: CX, cy: CY, r: RPX }, svg);
+}
+
+// Glide the view to a new centre along the geodesic, over ~0.6 s.
+function moveTo(i) {
+  const start = state.centre, target = nodes[i].z;
+  // the new centre, expressed in the current view
+  const w = to(start)(target);
+  const dist = 2 * Math.atanh(Math.min(abs(w), 1 - 1e-12));
+  const dir = abs(w) > 1e-12 ? [w[0] / abs(w), w[1] / abs(w)] : [1, 0];
+  state.focus = i;
+  const t0 = performance.now();
+  cancelAnimationFrame(state.anim);
+  const tick = (now) => {
+    const t = Math.min(1, (now - t0) / 600);
+    const e = t < 0.5 ? 2 * t * t : 1 - 2 * (1 - t) * (1 - t);
+    const step = polar(Math.tanh((e * dist) / 2), Math.atan2(dir[1], dir[0]));
+    state.centre = from(start)(step);
+    draw();
+    if (t < 1) state.anim = requestAnimationFrame(tick);
+  };
+  state.anim = requestAnimationFrame(tick);
+}
+
+svg.addEventListener('click', (ev) => {
+  const p = svgPoint(svg, ev);
+  let best = null, bestD = Infinity;
+  screen.forEach((s) => { const dd = Math.hypot(p.x - s.x, p.y - s.y); if (dd < Math.max(s.r + 6, 10) && dd < bestD) { bestD = dd; best = s.i; } });
+  if (best != null) moveTo(best);
+});
+svg.addEventListener('pointermove', (ev) => {
+  const p = svgPoint(svg, ev);
+  svg.style.cursor = screen.some((s) => Math.hypot(p.x - s.x, p.y - s.y) < Math.max(s.r + 6, 10)) ? 'pointer' : 'default';
+});
+
+function rebuild() {
+  nodes = build(state.b, state.depth);
+  state.focus = 0;
+  state.centre = [0, 0];
+  draw();
+}
+const slider = q('depth');
+slider.addEventListener('input', () => {
+  state.depth = Number(slider.value);
+  q('depth-val').textContent = slider.value;
+  rebuild();
+});
+
+draw();
+})();
+</script>
+
+<script>
+// Figure 5 (interactive): the exponential map. Top: where it sits in a
+// hyperbolic VLM, after Euclidean encoders. Bottom: an encoder output v lives in
+// the tangent plane at the origin of the hyperboloid; the map rolls it onto the
+// surface, to the point x at geodesic distance ||v|| in the direction of v.
+(function () {
+const { el, css, onTheme, setupCanvas, photo } = window.XP;
+const G = window.XP.geo;
+
+const root = document.getElementById('fig-lift');
+if (!root) return;
+const q = (role) => root.querySelector(`[data-role="${role}"]`);
+const svg = q('pipeline');
+const canvas = q('scene');
+const PAIRS = window.XP.PAIRS;
+
+// ---- pipeline diagram -----------------------------------------------------------
+function arrow(x1, y, x2) {
+  el('line', { class: 'cl-arrow', x1, y1: y, x2, y2: y }, svg);
+  el('path', { class: 'cl-head', d: `M${x2} ${y}l-7 -4v8z` }, svg);
+}
+function box(x, y, w, h, text, cls) {
+  el('rect', { class: cls, x, y: y - h / 2, width: w, height: h, rx: 6 }, svg);
+  el('text', { class: 'cl-encoder-label', x: x + w / 2, y: y + 5, 'text-anchor': 'middle' }, svg).textContent = text;
+}
+function pipeline() {
+  svg.replaceChildren();
+  el('rect', { class: 'lf-band', x: 150, y: 6, width: 420, height: 128, rx: 6 }, svg);
+  el('rect', { class: 'lf-band is-hyp', x: 676, y: 6, width: 170, height: 128, rx: 6 }, svg);
+  el('text', { class: 'lf-band-label', x: 360, y: 24, 'text-anchor': 'middle' }, svg).textContent = 'Euclidean';
+  el('text', { class: 'lf-band-label', x: 761, y: 24, 'text-anchor': 'middle' }, svg).textContent = 'hyperbolic';
+  const rows = [
+    { y: 56, input: () => photo(svg, PAIRS[0].img, 112, 56, 40, 5), enc: 'Image encoder' },
+    { y: 108, input: () => { el('text', { class: 'tr-caption', x: 134, y: 113, 'text-anchor': 'end' }, svg).textContent = `“${PAIRS[0].caption}”`; }, enc: 'Text encoder' },
+  ];
+  rows.forEach(({ y, input, enc }) => {
+    input();
+    arrow(140, y, 168);
+    box(172, y, 150, 34, enc, 'cl-encoder');
+    arrow(324, y, 352);
+    el('text', { class: 'cl-vec', x: 378, y: y + 5, 'text-anchor': 'middle' }, svg).textContent = 'v ∈ ℝⁿ';
+    arrow(408, y, 436);
+    box(440, y, 110, 34, 'exp map', 'lf-exp');
+    arrow(552, y, 700);
+    const t = el('text', { class: 'cl-vec', x: 744, y: y + 5, 'text-anchor': 'middle' }, svg);
+    t.textContent = 'x ∈ 𝕃';
+    el('tspan', { 'font-size': '10px', dy: -7 }, t).textContent = 'n';
+    el('tspan', { 'font-size': '10px', dx: -6, dy: 12 }, t).textContent = 'c';
+  });
+}
+
+// ---- the map, in 3D -------------------------------------------------------------
+const C = 1, R_MAX = 2;
+const state = { r: 1.4, dir: 35, yaw: -0.5, pitch: 0.45 };
+
+function scene() {
+  const { ctx, w, h } = setupCanvas(canvas);
+  const col = { ink: css('--ink'), soft: css('--ink-soft'), accent: css('--accent'), p1: css('--c-p1'), p2: css('--c-p2'), surface: css('--eq-bg'), gold: css('--gold') };
+  ctx.clearRect(0, 0, w, h);
+
+  const sMax = Math.sinh(R_MAX), tMax = Math.cosh(R_MAX), t0 = 1;
+  const centre = (t0 + tMax) / 2;
+  const scale = (h / 2 - 16) / Math.hypot((tMax - t0) / 2, 0.45 * sMax);
+  const cy = Math.cos(state.yaw), sy = Math.sin(state.yaw), cp = Math.cos(state.pitch), sp = Math.sin(state.pitch);
+  const P = (x) => {
+    const xr = x[0] * cy - x[1] * sy, yr = x[0] * sy + x[1] * cy, t = x[2] - centre;
+    return [w / 2 + scale * xr, h / 2 + 0.12 * h - scale * (t * cp + yr * sp), (yr * cp - t * sp) / sMax];
+  };
+  function curve(pts, colour, width, alpha, dash) {
+    const ps = pts.map(P);
+    ctx.strokeStyle = colour; ctx.lineWidth = width; ctx.setLineDash(dash || []);
+    for (let i = 1; i < ps.length; i++) {
+      const depth = (ps[i - 1][2] + ps[i][2]) / 2;
+      ctx.globalAlpha = alpha * (depth > 0 ? 1 - 0.55 * Math.min(depth, 1) : 1);
+      ctx.beginPath(); ctx.moveTo(ps[i - 1][0], ps[i - 1][1]); ctx.lineTo(ps[i][0], ps[i][1]); ctx.stroke();
+    }
+    ctx.globalAlpha = 1; ctx.setLineDash([]);
+  }
+  const polar = (r, deg) => [r * Math.cos((deg * Math.PI) / 180), r * Math.sin((deg * Math.PI) / 180)];
+  const lift = (v) => [v[0], v[1], t0];
+
+  // hyperboloid mesh
+  for (let r = 0.5; r <= R_MAX + 1e-9; r += 0.5) curve(Array.from({ length: 121 }, (_, i) => G.expO(polar(r, 3 * i), C)), col.soft, 1, 0.35);
+  for (let k = 0; k < 12; k++) curve(Array.from({ length: 41 }, (_, i) => G.expO(polar((R_MAX * i) / 40, k * 30), C)), col.soft, 1, 0.28);
+
+  // tangent plane at the origin: a translucent square with a light grid
+  const S = R_MAX;
+  const corners = [[-S, -S], [S, -S], [S, S], [-S, S]].map((v) => P(lift(v)));
+  ctx.globalAlpha = 0.16; ctx.fillStyle = col.accent;
+  ctx.beginPath(); corners.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath(); ctx.fill();
+  ctx.globalAlpha = 1;
+  for (let g = -S; g <= S + 1e-9; g += 0.5) {
+    curve([lift([g, -S]), lift([g, S])], col.accent, 1, 0.25);
+    curve([lift([-S, g]), lift([S, g])], col.accent, 1, 0.25);
+  }
+
+  // v in the plane, and its image: the geodesic from the origin, of the same length
+  const v = polar(state.r, state.dir);
+  const x = G.expO(v, C);
+  const O = P([0, 0, t0]);
+  const vt = P(lift(v)), xt = P(x);
+  curve([lift([0, 0]), lift(v)], col.p1, 3, 1);
+  const a = Math.atan2(vt[1] - O[1], vt[0] - O[0]);
+  ctx.fillStyle = col.p1;
+  ctx.beginPath(); ctx.moveTo(vt[0], vt[1]);
+  ctx.lineTo(vt[0] - 11 * Math.cos(a - 0.4), vt[1] - 11 * Math.sin(a - 0.4));
+  ctx.lineTo(vt[0] - 11 * Math.cos(a + 0.4), vt[1] - 11 * Math.sin(a + 0.4)); ctx.closePath(); ctx.fill();
+  const u = state.r > 1e-9 ? [v[0] / state.r, v[1] / state.r] : [1, 0];
+  curve(Array.from({ length: 61 }, (_, i) => G.expO([u[0] * (state.r * i) / 60, u[1] * (state.r * i) / 60], C)), col.p2, 3, 1);
+  // how the map moves points: from the tip of v down onto the surface
+  curve([lift(v), x], col.soft, 1.2, 0.9, [3, 4]);
+
+  const dot = (p, r, fill) => { ctx.beginPath(); ctx.arc(p[0], p[1], r, 0, 2 * Math.PI); ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = col.surface; ctx.stroke(); };
+  dot(O, 4.5, col.ink);
+  dot(xt, 7, col.p2);
+  const lab = (t, sub, p, dx, dy) => {
+    ctx.fillStyle = col.ink; ctx.font = 'italic 700 16px "Source Serif 4", Georgia, serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(t, p[0] + dx, p[1] + dy);
+    if (sub) { const tw = ctx.measureText(t).width; ctx.font = '600 10px Inter, sans-serif'; ctx.fillText(sub, p[0] + dx + tw + 1, p[1] + dy + 5); }
+  };
+  lab('v', '', vt, 10, -12);
+  lab('x', '', xt, 12, 4);
+  lab('0', 'L', O, -22, -12);
+
+}
+
+// ---- controls -------------------------------------------------------------------
+q('r').addEventListener('input', (ev) => { state.r = Number(ev.target.value); q('r-val').textContent = state.r.toFixed(2); scene(); });
+q('dir').addEventListener('input', (ev) => { state.dir = Number(ev.target.value); q('dir-val').textContent = `${state.dir}°`; scene(); });
+let rot = null;
+canvas.addEventListener('pointerdown', (ev) => { rot = { x: ev.clientX, y: ev.clientY, yaw: state.yaw, pitch: state.pitch }; canvas.setPointerCapture(ev.pointerId); });
+canvas.addEventListener('pointermove', (ev) => {
+  if (!rot) return;
+  state.yaw = rot.yaw + (ev.clientX - rot.x) * 0.01;
+  state.pitch = Math.min(1.4, Math.max(-0.1, rot.pitch + (ev.clientY - rot.y) * 0.01));
+  scene();
+});
+const end = () => { rot = null; };
+canvas.addEventListener('pointerup', end);
+canvas.addEventListener('pointercancel', end);
+
+pipeline();
+scene();
+onTheme(scene);
+window.addEventListener('resize', scene);
+})();
+</script>
+
+<script>
+// Figure 6 (interactive): the three geometric operations before and after the
+// exponential map. Encoder outputs v1, v2 live in the flat plane on the left; the
+// map carries them to x1, x2 on the hyperboloid on the right. Each row of the
+// figure (.op-row, with data-op = dist | ext | aper) draws one operation in both spaces:
+// the distance between the points, the exterior angle at the first point, or
+// the half-aperture of the entailment cone at the first point.
+(function () {
+const { css, onTheme, setupCanvas, canvasPoint } = window.XP;
+const G = window.XP.geo;
+
+const fig = document.getElementById('fig-ops');
+if (!fig) return;
+const rows = [...fig.querySelectorAll('.op-row')].map(setup);
+
+// one curvature slider and one reset for all three rows
+const slider = fig.querySelector('[data-role="c"]');
+function setC(c) {
+  slider.value = String(Math.log10(c));
+  fig.querySelector('[data-role="c-val"]').textContent = c < 1 ? c.toFixed(2) : c.toFixed(1);
+  rows.forEach((r) => r.setC(c));
+}
+slider.addEventListener('input', () => setC(10 ** Number(slider.value)));
+fig.querySelector('[data-role="reset"]').addEventListener('click', () => { rows.forEach((r) => r.reset()); setC(1); });
+setC(1);
+
+function setup(root) {
+const OP = root.dataset.op;
+const q = (role) => root.querySelector(`[data-role="${role}"]`);
+const plane = q('plane');
+const hyp = q('hyp');
+
+const VIEW = 1.5;        // the plane shows [-VIEW, VIEW]^2
+const MESH_CAP = 3;      // the hyperboloid mesh stops at sqrt(c) r = MESH_CAP
+const ARC = 0.3;         // radius of the exterior-angle arc, in units of length
+
+const polar = (r, deg) => [r * Math.cos((deg * Math.PI) / 180), r * Math.sin((deg * Math.PI) / 180)];
+const START = OP === 'aper' ? { v1: polar(0.9, 25), v2: polar(1.1, 60) } : { v1: polar(0.55, 25), v2: polar(1.1, 60) };
+const state = { v1: START.v1.slice(), v2: START.v2.slice(), c: 1, yaw: -0.55, pitch: 0.7, drag: null };
+const POINTS = OP === 'aper' ? ['v1'] : ['v1', 'v2'];
+
+const norm = (v) => Math.hypot(v[0], v[1]);
+const angleOf = (v) => Math.atan2(v[1], v[0]);
+
+function colours() {
+  return {
+    ink: css('--ink'), soft: css('--ink-soft'), rule: css('--rule'), accent: css('--accent'),
+    gold: css('--gold'), p1: css('--c-p1'), p2: css('--c-p2'), surface: css('--eq-bg'),
+  };
+}
+
+function dot(ctx, x, y, r, fill, ring) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, 2 * Math.PI);
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = ring;
+  ctx.stroke();
+}
+
+function label(ctx, text, sub, x, y, colour) {
+  ctx.fillStyle = colour;
+  ctx.font = 'italic 700 16px "Source Serif 4", Georgia, serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, x, y);
+  const w = ctx.measureText(text).width;
+  ctx.font = '700 11px "Source Serif 4", Georgia, serif';
+  ctx.fillText(sub, x + w + 1, y + 5);
+}
+
+// Label a point on the side facing away from the origin o (canvas coordinates).
+function pointLabel(ctx, text, sub, p, o, colour) {
+  let dx = p[0] - o[0], dy = p[1] - o[1];
+  const n = Math.hypot(dx, dy);
+  if (n < 1e-6) { dx = 1; dy = -1; } else { dx /= n; dy /= n; }
+  const x = p[0] + 17 * dx, y = p[1] + 17 * dy;
+  ctx.font = 'italic 700 16px "Source Serif 4", Georgia, serif';
+  const w = ctx.measureText(text).width + 8;
+  label(ctx, text, sub, x - w / 2 + (dx * w) / 2, y, colour);
+}
+
+function polyline(ctx, pts) {
+  ctx.beginPath();
+  pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
+}
+
+// Signed exterior angle at v1 toward v2, in the plane.
+function extSignedE(v1, v2) {
+  const u = [v1[0] / norm(v1), v1[1] / norm(v1)];
+  const d = [v2[0] - v1[0], v2[1] - v1[1]];
+  return Math.atan2(u[0] * d[1] - u[1] * d[0], u[0] * d[0] + u[1] * d[1]);
+}
+
+// Signed exterior angle at x1 toward x2, on the hyperboloid, in the frame (a, e).
+function extSignedL(v1, x2, c) {
+  const { a, e } = G.frameAt(v1, c);
+  return Math.atan2(G.lor(x2, e), G.lor(x2, a));
+}
+
+// ---------------------------------------------------------------- the plane
+function drawPlane(col) {
+  const { ctx, w, h } = setupCanvas(plane);
+  const s = (w / 2 - 14) / VIEW;
+  const P = (v) => [w / 2 + v[0] * s, h / 2 - v[1] * s];
+  const { v1, v2, c } = state;
+  const r1 = norm(v1);
+  ctx.clearRect(0, 0, w, h);
+
+  // polar grid: the same rings and rays are drawn on the hyperboloid
+  ctx.strokeStyle = col.rule;
+  ctx.lineWidth = 1;
+  for (let r = 0.25; r <= VIEW * 1.45; r += 0.25) {
+    ctx.globalAlpha = Math.abs(r % 1) < 1e-9 ? 1 : 0.55;
+    ctx.beginPath();
+    ctx.arc(w / 2, h / 2, r * s, 0, 2 * Math.PI);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 0.55;
+  for (let k = 0; k < 12; k++) {
+    polyline(ctx, [P([0, 0]), P(polar(VIEW * 1.45, k * 30))]);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // entailment cone at v1 and the ball it avoids
+  if (OP === 'aper') {
+    const R = G.ballR(c);
+    ctx.fillStyle = col.accent;
+    ctx.globalAlpha = 0.1;
+    ctx.beginPath();
+    ctx.arc(w / 2, h / 2, R * s, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.globalAlpha = 0.7;
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = col.accent;
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const ap = G.aperE(r1, c), phi = angleOf(v1), L = 4;
+    const at = (t) => [v1[0] + L * Math.cos(t), v1[1] + L * Math.sin(t)];
+    const b1 = at(phi + ap), b2 = at(phi - ap);
+    const wedge = [P(v1)];
+    for (let i = 0; i <= 32; i++) wedge.push(P(at(phi - ap + (2 * ap * i) / 32)));
+    ctx.globalAlpha = 0.13;
+    ctx.fillStyle = col.gold;
+    polyline(ctx, wedge);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 0.9;
+    ctx.strokeStyle = col.gold;
+    ctx.lineWidth = 1.4;
+    polyline(ctx, [P(b1), P(v1), P(b2)]);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // outward continuation of the ray through v1
+  const u = [v1[0] / r1, v1[1] / r1];
+  if (OP !== 'dist') {
+    ctx.strokeStyle = col.soft;
+    ctx.lineWidth = 1.4;
+    ctx.setLineDash([5, 4]);
+    polyline(ctx, [P([0, 0]), P(v1), P([v1[0] + 0.55 * u[0], v1[1] + 0.55 * u[1]])]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // the exterior angle at v1, between the outward ray and the direction to v2
+  if (OP === 'ext') {
+    const ext = extSignedE(v1, v2), phi = angleOf(v1);
+    const arc = [];
+    for (let i = 0; i <= 40; i++) {
+      const t = phi + (ext * i) / 40;
+      arc.push(P([v1[0] + ARC * Math.cos(t), v1[1] + ARC * Math.sin(t)]));
+    }
+    ctx.strokeStyle = col.gold;
+    ctx.lineWidth = 3;
+    polyline(ctx, arc);
+    ctx.stroke();
+  }
+
+  // the geodesic: a straight segment
+  if (OP !== 'aper') {
+    ctx.strokeStyle = col.ink;
+    ctx.lineWidth = OP === 'dist' ? 3 : 1.6;
+    polyline(ctx, [P(v1), P(v2)]);
+    ctx.stroke();
+  }
+
+  const O = P([0, 0]);
+  dot(ctx, O[0], O[1], 4, col.soft, col.surface);
+  ctx.fillStyle = col.soft;
+  ctx.font = '600 12px Inter, system-ui, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'top';
+  ctx.fillText('0', O[0] - 6, O[1] + 4);
+
+  [[v1, col.p1, '1'], [v2, col.p2, '2']].slice(0, POINTS.length).forEach(([v, fill, sub]) => {
+    const p = P(v);
+    dot(ctx, p[0], p[1], 7, fill, col.surface);
+    pointLabel(ctx, 'v', sub, p, O, col.ink);
+  });
+
+  return { s, P };
+}
+
+// ----------------------------------------------------------- the hyperboloid
+function drawHyp(col) {
+  const { ctx, w, h } = setupCanvas(hyp);
+  const { v1, v2, c } = state;
+  const sc = Math.sqrt(c);
+  const r1 = norm(v1), r2 = norm(v2);
+  ctx.clearRect(0, 0, w, h);
+
+  // The camera frames the mesh (and the points, if they lie beyond it).
+  const rMesh = Math.min(VIEW, MESH_CAP / sc);
+  const rFit = Math.max(rMesh, r1, r2);
+  const t0 = 1 / sc;
+  const tMax = Math.cosh(sc * rFit) / sc;
+  const sMax = Math.sinh(sc * rFit) / sc;
+  const centre = (t0 + tMax) / 2;
+  const scale = (w / 2 - 22) / Math.hypot(sMax, (tMax - t0) / 2 + 0.15 * sMax);
+  const cy = Math.cos(state.yaw), sy = Math.sin(state.yaw);
+  const cp = Math.cos(state.pitch), spch = Math.sin(state.pitch);
+  // Projection to the canvas, plus a depth in [-1, 1] (positive = far away).
+  const P = (x) => {
+    const xr = x[0] * cy - x[1] * sy;
+    const yr = x[0] * sy + x[1] * cy;
+    const t = x[2] - centre;
+    return [w / 2 + scale * xr, h / 2 + 0.1 * h - scale * (t * cp + yr * spch), (yr * cp - t * spch) / (sMax + 1e-9)];
+  };
+
+  // A curve on the surface, fainter where it runs along the back.
+  function curve(pts3, colour, width, alpha, dash) {
+    const pts = pts3.map(P);
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = width;
+    ctx.setLineDash(dash || []);
+    for (let i = 1; i < pts.length; i++) {
+      const depth = (pts[i - 1][2] + pts[i][2]) / 2;
+      ctx.globalAlpha = alpha * (depth > 0 ? 1 - 0.55 * Math.min(depth, 1) : 1);
+      ctx.beginPath();
+      ctx.moveTo(pts[i - 1][0], pts[i - 1][1]);
+      ctx.lineTo(pts[i][0], pts[i][1]);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.setLineDash([]);
+  }
+
+  const ring = (r, n = 120) => Array.from({ length: n + 1 }, (_, i) => G.expO(polar(r, (360 * i) / n), c));
+  const ray = (deg, rTo, n = 40) => Array.from({ length: n + 1 }, (_, i) => G.expO(polar((rTo * i) / n, deg), c));
+
+  // tangent plane at the origin, where the encoder outputs live before the map
+  const lifted = (v) => [v[0], v[1], t0];
+  const tp = Array.from({ length: 121 }, (_, i) => lifted(polar(rMesh, (360 * i) / 120)));
+  curve(tp, col.soft, 1, 0.45, [2, 4]);
+
+  // mesh: images of the plane's rings and rays
+  for (let r = 0.25; r <= rMesh + 1e-9; r += 0.25) curve(ring(r), col.soft, Math.abs(r % 1) < 1e-9 ? 1.3 : 1, 0.4);
+  if (rMesh % 0.25 > 1e-6) curve(ring(rMesh), col.soft, 1.3, 0.4);
+  for (let k = 0; k < 12; k++) curve(ray(k * 30, rMesh), col.soft, 1, 0.32);
+
+  const x1 = G.expO(v1, c), x2 = G.expO(v2, c);
+  const { a, e } = G.frameAt(v1, c);
+
+  if (OP === 'aper') {
+    // inside this circle the half-aperture is saturated at pi/2, like the ball on the left
+    const rSat = Math.asinh(2 * G.K) / sc;
+    curve(ring(rSat), col.accent, 1.2, 0.8, [4, 4]);
+
+    const ap = G.aperL(r1, c);
+    const L = 1.4 * Math.max(rMesh - r1, 0.6);
+    const side = (sgn) => Array.from({ length: 41 }, (_, i) =>
+      G.expAt(x1, G.comb(((L * i) / 40) * Math.cos(ap), a, sgn * ((L * i) / 40) * Math.sin(ap), e), c));
+    const s1 = side(1), s2 = side(-1);
+    const rim = Array.from({ length: 33 }, (_, i) => {
+      const t = ap - (2 * ap * i) / 32;
+      return G.expAt(x1, G.comb(L * Math.cos(t), a, L * Math.sin(t), e), c);
+    });
+    const fill = [...s1, ...rim, ...s2.slice().reverse()].map(P);
+    ctx.globalAlpha = 0.13;
+    ctx.fillStyle = col.gold;
+    polyline(ctx, fill);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    curve(s1, col.gold, 1.4, 0.9);
+    curve(s2, col.gold, 1.4, 0.9);
+  }
+
+  // lift lines: from v on the tangent plane down to x = exp(v) on the surface
+  [[v1, x1], [v2, x2]].slice(0, POINTS.length).forEach(([v, x]) => {
+    const p = P(lifted(v)), q2 = P(x);
+    ctx.strokeStyle = col.soft;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 3]);
+    polyline(ctx, [p, q2]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.arc(p[0], p[1], 3.5, 0, 2 * Math.PI);
+    ctx.strokeStyle = col.soft;
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+  });
+
+  // radial geodesic through x1 and its outward continuation
+  const u = [v1[0] / r1, v1[1] / r1];
+  if (OP !== 'dist') {
+    const radial = Array.from({ length: 41 }, (_, i) => G.expO([u[0] * (r1 + 0.55) * i / 40, u[1] * (r1 + 0.55) * i / 40], c));
+    curve(radial, col.soft, 1.4, 1, [5, 4]);
+  }
+
+  // exterior angle, drawn as a small arc of geodesic radius ARC around x1
+  if (OP === 'ext') {
+    const ext = extSignedL(v1, x2, c);
+    const arc = Array.from({ length: 41 }, (_, i) => {
+      const t = (ext * i) / 40;
+      return G.expAt(x1, G.comb(ARC * Math.cos(t), a, ARC * Math.sin(t), e), c);
+    });
+    curve(arc, col.gold, 3, 1);
+  }
+
+  // the geodesic between x1 and x2
+  if (OP !== 'aper') curve(G.geodesic(x1, x2, c, 80), col.ink, OP === 'dist' ? 3 : 1.6, 1);
+
+  const O = P([0, 0, t0]);
+  dot(ctx, O[0], O[1], 4, col.soft, col.surface);
+  ctx.fillStyle = col.soft;
+  ctx.font = '600 12px Inter, system-ui, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'bottom';
+  ctx.textAlign = 'left';
+  ctx.fillText('0', O[0] - 16, O[1] - 3);
+  ctx.font = '600 9px Inter, system-ui, sans-serif';
+  ctx.fillText('L', O[0] - 8, O[1] + 1);
+
+  [[x1, col.p1, '1'], [x2, col.p2, '2']].slice(0, POINTS.length).forEach(([x, fill, sub]) => {
+    const p = P(x);
+    dot(ctx, p[0], p[1], 7, fill, col.surface);
+    pointLabel(ctx, 'x', sub, p, O, col.ink);
+  });
+}
+
+// ---------------------------------------------------------------- readout
+function fmt(x) { return x.toFixed(3); }
+function deg(x) { return ((x * 180) / Math.PI).toFixed(1) + '°'; }
+
+function readout() {
+  const { v1, v2, c } = state;
+  const r1 = norm(v1), r2 = norm(v2);
+  let th = Math.abs(angleOf(v2) - angleOf(v1));
+  if (th > Math.PI) th = 2 * Math.PI - th;
+  const [E, L, R] = {
+    dist: [fmt(G.distE(r1, r2, th)), fmt(G.distL(r1, r2, th, c)), G.ratioD(r1, r2, th, c)],
+    ext: [deg(G.extE(r1, r2, th)), deg(G.extL(r1, r2, th, c)), G.ratioExt(r1, r2, th, c)],
+    aper: [deg(G.aperE(r1, c)), deg(G.aperL(r1, c)), G.ratioAper(r1, c)],
+  }[OP];
+  q('E').textContent = E;
+  q('L').textContent = L;
+  q('R').textContent = R.toFixed(3);
+}
+
+function draw() {
+  const col = colours();
+  drawPlane(col);
+  drawHyp(col);
+  readout();
+}
+
+// ---------------------------------------------------------------- controls
+function setC(c) {
+  state.c = c;
+  draw();
+}
+function reset() {
+  state.v1 = START.v1.slice();
+  state.v2 = START.v2.slice();
+  state.yaw = -0.55;
+  state.pitch = 0.7;
+}
+
+// Drag v1 or v2 on the plane.
+function planeWorld(ev) {
+  const w = Number(plane.dataset.w), h = Number(plane.dataset.h);
+  const [px, py] = canvasPoint(plane, ev, w, h);
+  const s = (w / 2 - 14) / VIEW;
+  return [(px - w / 2) / s, (h / 2 - py) / s];
+}
+plane.addEventListener('pointerdown', (ev) => {
+  const p = planeWorld(ev);
+  const s = (Number(plane.dataset.w) / 2 - 14) / VIEW;
+  const d1 = Math.hypot(p[0] - state.v1[0], p[1] - state.v1[1]) * s;
+  const d2 = POINTS.length > 1 ? Math.hypot(p[0] - state.v2[0], p[1] - state.v2[1]) * s : Infinity;
+  const hit = Math.min(d1, d2) < 18 ? (d1 <= d2 ? 'v1' : 'v2') : null;
+  if (!hit) return;
+  state.drag = hit;
+  plane.setPointerCapture(ev.pointerId);
+  plane.classList.add('is-dragging');
+});
+plane.addEventListener('pointermove', (ev) => {
+  const p = planeWorld(ev);
+  if (!state.drag) {
+    const s = (Number(plane.dataset.w) / 2 - 14) / VIEW;
+    const near = POINTS.map((k) => state[k]).some((v) => Math.hypot(p[0] - v[0], p[1] - v[1]) * s < 18);
+    plane.style.cursor = near ? 'grab' : 'default';
+    return;
+  }
+  let r = norm(p);
+  // keep points off the origin (the exterior angle needs a direction) and in view
+  const rr = Math.min(Math.max(r, 0.08), VIEW);
+  if (r < 1e-9) r = 1;
+  state[state.drag] = [(p[0] / r) * rr, (p[1] / r) * rr];
+  draw();
+});
+const endDrag = () => { state.drag = null; plane.classList.remove('is-dragging'); };
+plane.addEventListener('pointerup', endDrag);
+plane.addEventListener('pointercancel', endDrag);
+
+// Rotate the hyperboloid by dragging it.
+let rot = null;
+hyp.addEventListener('pointerdown', (ev) => {
+  rot = { x: ev.clientX, y: ev.clientY, yaw: state.yaw, pitch: state.pitch };
+  hyp.setPointerCapture(ev.pointerId);
+});
+hyp.addEventListener('pointermove', (ev) => {
+  if (!rot) return;
+  state.yaw = rot.yaw + (ev.clientX - rot.x) * 0.01;
+  state.pitch = Math.min(1.45, Math.max(-0.2, rot.pitch + (ev.clientY - rot.y) * 0.01));
+  drawHyp(colours());
+});
+hyp.addEventListener('pointerup', () => { rot = null; });
+hyp.addEventListener('pointercancel', () => { rot = null; });
+
+onTheme(draw);
+window.addEventListener('resize', draw);
+return { setC, reset };
+}
+})();
+</script>
+
+<script>
+// Figure 7 (interactive): the distance ratio as a volume and a slice through it.
+// It depends on (r1, r2, theta) at a given curvature, so it fills a cube. Left: the cube, cut at the chosen r1. Right: that cut, the 2D slice over
+// (theta, r2) that the paper reports.
+(function () {
+const { css, onTheme, setupCanvas, ramp } = window.XP;
+const G = window.XP.geo;
+
+const root = document.getElementById('fig-cube');
+if (!root) return;
+const q = (role) => root.querySelector(`[data-role="${role}"]`);
+const canvas = q('canvas');
+
+const W = 860, H = 470;
+const R_MIN = 0.05, R_MAX = 1.5;                 // range of both radii
+const SL = { x: 500, y: 30, w: 330, h: 320 };    // slice panel
+const NF = 64;                                   // grid per cube face
+const NS = 120;                                  // grid of the slice
+
+const state = { r1: 0.8, c: 1 };
+
+const rad = (t) => R_MIN + t * (R_MAX - R_MIN);
+const value = (u, v, w) => G.ratioD(rad(w), rad(v), Math.max(1e-4, Math.min(Math.PI - 1e-4, u * Math.PI)), state.c);
+
+// ---- cube projection: u = theta (right), v = r2 (up), w = r1 (into the page) ----
+const S = 260, OX = 58, OY = 380, DX = 0.5 * S * Math.cos(Math.PI / 6), DY = 0.5 * S * Math.sin(Math.PI / 6);
+const proj = (u, v, w) => [OX + S * u + DX * w, OY - S * v - DY * w];
+
+// Paint a field over a parallelogram face: (s, t) in [0,1]^2 -> world (u, v, w).
+function face(ctx, colour, map, n) {
+  const off = document.createElement('canvas');
+  off.width = n; off.height = n;
+  const octx = off.getContext('2d');
+  const img = octx.createImageData(n, n);
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    const [u, v, w] = map((i + 0.5) / n, (j + 0.5) / n);
+    const c = colour(value(u, v, w));
+    const k = 4 * (j * n + i);
+    img.data[k] = c[0]; img.data[k + 1] = c[1]; img.data[k + 2] = c[2]; img.data[k + 3] = 255;
+  }
+  octx.putImageData(img, 0, 0);
+  const o = proj(...map(0, 0)), a = proj(...map(1, 0)), b = proj(...map(0, 1));
+  ctx.save();
+  ctx.transform((a[0] - o[0]) / n, (a[1] - o[1]) / n, (b[0] - o[0]) / n, (b[1] - o[1]) / n, o[0], o[1]);
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(off, 0, 0);
+  ctx.restore();
+}
+
+function draw() {
+  const { ctx } = setupCanvas(canvas);
+  ctx.clearRect(0, 0, W, H);
+  const col = { ink: css('--ink'), soft: css('--ink-soft'), rule: css('--rule'), surface: css('--eq-bg'), accent: css('--accent') };
+
+  // colour scale: fitted to the largest deviation from 1 in the slice
+  const slice = new Float64Array(NS * NS);
+  for (let j = 0; j < NS; j++) for (let i = 0; i < NS; i++) slice[j * NS + i] = value((i + 0.5) / NS, 1 - (j + 0.5) / NS, wOf(state.r1));
+  let span = 1e-4;
+  slice.forEach((x) => { span = Math.max(span, Math.abs(x - 1)); });
+  const base = ramp([css('--div-lo'), css('--div-mid'), css('--div-hi')]);
+  const colour = (x) => base(0.5 + (x - 1) / (2 * span));
+
+  // ---- the cube, cut at w = ws: the part behind the cut is solid ----
+  const ws = wOf(state.r1);
+  const shade = (map, alpha) => {   // darken a face a little so the block reads as 3D
+    const pts = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([s, t]) => proj(...map(s, t)));
+    ctx.globalAlpha = alpha; ctx.fillStyle = col.ink;
+    ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 1;
+  };
+  const top = (s, t) => [s, 1, 1 - t * (1 - ws)], side = (s, t) => [1, 1 - t, ws + s * (1 - ws)];
+  face(ctx, colour, top, NF); shade(top, 0.06);
+  face(ctx, colour, side, NF); shade(side, 0.12);
+  face(ctx, colour, (s, t) => [s, 1 - t, ws], NF);                       // the cut itself
+  // the part of the cube in front of the cut: dashed wireframe, then the cut's outline
+  const line = (pts, style, width, dash) => {
+    ctx.strokeStyle = style; ctx.lineWidth = width; ctx.setLineDash(dash || []);
+    ctx.beginPath(); pts.forEach((p, i) => { const [x, y] = proj(...p); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
+    ctx.setLineDash([]);
+  };
+  line([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0, 0, 0]], col.soft, 1, [3, 3]);
+  [[0, 0], [1, 0], [1, 1], [0, 1]].forEach(([u, v]) => line([[u, v, 0], [u, v, ws]], col.soft, 1, [3, 3]));
+  line([[0, 0, ws], [1, 0, ws], [1, 1, ws], [0, 1, ws], [0, 0, ws]], col.ink, 2);
+  // and the outer edges of the solid part behind it
+  line([[1, 0, ws], [1, 0, 1], [1, 1, 1], [0, 1, 1], [0, 1, ws]], col.soft, 1);
+  line([[1, 1, ws], [1, 1, 1]], col.soft, 1);
+
+  // axis labels on the cube
+  ctx.fillStyle = col.ink;
+  ctx.font = 'italic 700 15px "Source Serif 4", Georgia, serif';
+  ctx.textAlign = 'center';
+  let p = proj(0.5, 0, 0); ctx.fillText('θ', p[0], p[1] + 22);
+  p = proj(0, 0.5, 0); ctx.fillText('r₂', p[0] - 18, p[1]);
+  p = proj(1, 0, 0.5); ctx.textAlign = 'left'; ctx.fillText('r₁', p[0] + 14, p[1] + 16);
+  ctx.font = '12px Inter, system-ui, sans-serif';
+  ctx.fillStyle = col.soft;
+  p = proj(0, 0, 0); ctx.textAlign = 'center'; ctx.fillText('0', p[0], p[1] + 18);
+  p = proj(1, 0, 0); ctx.fillText('π', p[0], p[1] + 18);
+  p = proj(0, 1, ws); ctx.textAlign = 'left'; ctx.fillStyle = col.ink; ctx.font = '600 12px Inter, system-ui, sans-serif';
+  ctx.fillText(`cut at r₁ = ${state.r1.toFixed(2)}`, p[0], p[1] - 8);
+
+  // ---- the slice, flat ----
+  const off = document.createElement('canvas');
+  off.width = NS; off.height = NS;
+  const octx = off.getContext('2d');
+  const img = octx.createImageData(NS, NS);
+  for (let k = 0; k < NS * NS; k++) { const c = colour(slice[k]); img.data[4 * k] = c[0]; img.data[4 * k + 1] = c[1]; img.data[4 * k + 2] = c[2]; img.data[4 * k + 3] = 255; }
+  octx.putImageData(img, 0, 0);
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.drawImage(off, SL.x, SL.y, SL.w, SL.h); ctx.restore();
+  ctx.strokeStyle = col.ink; ctx.lineWidth = 2; ctx.strokeRect(SL.x, SL.y, SL.w, SL.h);
+  const yOf = (r2) => SL.y + ((R_MAX - r2) / (R_MAX - R_MIN)) * SL.h;
+
+  // slice axes and title
+  ctx.fillStyle = col.ink; ctx.font = '600 13px Inter, system-ui, sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText(`Distance ratio at r₁ = ${state.r1.toFixed(2)}`, SL.x, SL.y - 10);
+  ctx.fillStyle = col.soft; ctx.font = '12px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
+  ['0', 'π/4', 'π/2', '3π/4', 'π'].forEach((t, i) => ctx.fillText(t, SL.x + (i / 4) * SL.w, SL.y + SL.h + 18));
+  ctx.textAlign = 'right';
+  for (let r = 0.25; r <= R_MAX + 1e-9; r += 0.25) ctx.fillText(r.toFixed(2), SL.x - 6, yOf(r) + 4);
+  ctx.fillStyle = col.ink; ctx.font = 'italic 700 15px "Source Serif 4", Georgia, serif'; ctx.textAlign = 'center';
+  ctx.fillText('θ', SL.x + SL.w / 2, SL.y + SL.h + 38);
+  ctx.save(); ctx.translate(SL.x - 50, SL.y + SL.h / 2); ctx.rotate(-Math.PI / 2); ctx.fillText('r₂', 0, 0); ctx.restore();
+
+  // shared colour bar
+  const bx = 58, bw = W - 58 - 30, by = 418, bh = 12;
+  const bar = document.createElement('canvas'); bar.width = 200; bar.height = 1;
+  const bctx = bar.getContext('2d'); const bimg = bctx.createImageData(200, 1);
+  for (let i = 0; i < 200; i++) { const c = base(i / 199); bimg.data[4 * i] = c[0]; bimg.data[4 * i + 1] = c[1]; bimg.data[4 * i + 2] = c[2]; bimg.data[4 * i + 3] = 255; }
+  bctx.putImageData(bimg, 0, 0);
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.drawImage(bar, bx, by, bw, bh); ctx.restore();
+  ctx.strokeStyle = col.rule; ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
+  ctx.fillStyle = col.soft; ctx.font = '11.5px Inter, system-ui, sans-serif';
+  const digits = span < 0.02 ? 3 : 2;
+  [-1, -0.5, 0, 0.5, 1].forEach((t, i) => {
+    ctx.textAlign = i === 0 ? 'left' : i === 4 ? 'right' : 'center';
+    ctx.fillText((1 + t * span).toFixed(digits), bx + ((t + 1) / 2) * bw, by + bh + 16);
+  });
+  ctx.textAlign = 'center';
+  ctx.fillText('ratio = 1: the exponential map leaves the operation unchanged', bx + bw / 2, by + bh + 34);
+}
+
+function wOf(r1) { return (r1 - R_MIN) / (R_MAX - R_MIN); }
+
+// ---- controls -------------------------------------------------------------------
+const r1s = q('r1'), cs = q('c');
+function sync() {
+  r1s.value = String(state.r1);
+  q('r1-val').textContent = state.r1.toFixed(2);
+  cs.value = String(Math.log10(state.c));
+  q('c-val').textContent = state.c < 1 ? state.c.toFixed(2) : state.c.toFixed(1);
+  draw();
+}
+r1s.addEventListener('input', () => { state.r1 = Number(r1s.value); sync(); });
+cs.addEventListener('input', () => { state.c = 10 ** Number(cs.value); sync(); });
+
+onTheme(draw);
+sync();
+})();
+</script>
+
+<script>
+// Figure 8: the distance ratio for each trained model. Each panel is the
+// slice of Figure 7 at that model's most common text radius r1, at the converged
+// curvature c = 0.1, over the image radius r2 and the angle theta. All panels share
+// one colour scale.
+(function () {
+const { css, onTheme, setupCanvas, ramp, MODELS } = window.XP;
+const G = window.XP.geo;
+
+const root = document.getElementById('fig-models');
+if (!root) return;
+const q = (role) => root.querySelector(`[data-role="${role}"]`);
+const canvas = q('canvas');
+
+const W = 860, C = 0.1;
+const R_MIN = 0.05, R_MAX = 1.5, N = 90;
+const M = { l: 48, t: 30, gap: 18, r: 10 };
+const PW = (W - M.l - M.r - 3 * M.gap) / 4, PH = 186;
+const px = (k) => M.l + k * (PW + M.gap);
+const thOf = (i) => ((i + 0.5) / N) * Math.PI;
+const r2Of = (j) => R_MAX - ((j + 0.5) / N) * (R_MAX - R_MIN);
+const yOf = (r2) => M.t + ((R_MAX - r2) / (R_MAX - R_MIN)) * PH;
+
+const fields = MODELS.map((m) => {
+  const f = new Float64Array(N * N);
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) f[j * N + i] = G.ratioD(m.r1, r2Of(j), thOf(i), C);
+  return f;
+});
+let span = 1e-4;
+fields.forEach((f) => f.forEach((x) => { span = Math.max(span, Math.abs(x - 1)); }));
+
+function draw() {
+  const { ctx } = setupCanvas(canvas);
+  ctx.clearRect(0, 0, W, 330);
+  const col = { ink: css('--ink'), soft: css('--ink-soft'), rule: css('--rule'), surface: css('--eq-bg') };
+  const base = ramp([css('--div-lo'), css('--div-mid'), css('--div-hi')]);
+  const colour = (x) => base(0.5 + (x - 1) / (2 * span));
+
+  MODELS.forEach((m, k) => {
+    const x0 = px(k);
+    const off = document.createElement('canvas'); off.width = N; off.height = N;
+    const octx = off.getContext('2d'); const img = octx.createImageData(N, N);
+    fields[k].forEach((v, n) => { const c = colour(v); img.data.set([c[0], c[1], c[2], 255], 4 * n); });
+    octx.putImageData(img, 0, 0);
+    ctx.save(); ctx.imageSmoothingEnabled = true; ctx.drawImage(off, x0, M.t, PW, PH); ctx.restore();
+    ctx.strokeStyle = col.rule; ctx.lineWidth = 1; ctx.strokeRect(x0 + 0.5, M.t + 0.5, PW - 1, PH - 1);
+
+    ctx.fillStyle = col.ink; ctx.font = '600 13px Inter, system-ui, sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(m.name, x0, M.t - 10);
+    ctx.fillStyle = col.soft; ctx.font = '12px Inter, system-ui, sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText(`r₁ = ${m.r1.toFixed(2)}`, x0 + PW, M.t - 10);
+    ['0', 'π/2', 'π'].forEach((t, i) => {
+      ctx.textAlign = ['left', 'center', 'right'][i];
+      ctx.fillText(t, x0 + (i / 2) * PW, M.t + PH + 16);
+    });
+    ctx.textAlign = 'center';
+    ctx.fillStyle = col.ink; ctx.font = 'italic 700 14px "Source Serif 4", Georgia, serif';
+    ctx.fillText('θ', x0 + PW / 2, M.t + PH + 32);
+  });
+
+  // shared r2 axis on the left
+  ctx.fillStyle = col.soft; ctx.font = '12px Inter, system-ui, sans-serif'; ctx.textAlign = 'right';
+  for (let r = 0.5; r <= R_MAX + 1e-9; r += 0.5) ctx.fillText(r.toFixed(1), M.l - 6, yOf(r) + 4);
+  ctx.save(); ctx.translate(14, M.t + PH / 2); ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = col.ink; ctx.font = 'italic 700 14px "Source Serif 4", Georgia, serif'; ctx.textAlign = 'center';
+  ctx.fillText('r₂', 0, 0); ctx.restore();
+
+  // shared colour bar
+  const bx = M.l, bw = W - M.l - M.r, by = 268, bh = 12;
+  const bar = document.createElement('canvas'); bar.width = 200; bar.height = 1;
+  const bctx = bar.getContext('2d'); const bimg = bctx.createImageData(200, 1);
+  for (let i = 0; i < 200; i++) { const c = base(i / 199); bimg.data.set([c[0], c[1], c[2], 255], 4 * i); }
+  bctx.putImageData(bimg, 0, 0);
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.drawImage(bar, bx, by, bw, bh); ctx.restore();
+  ctx.strokeStyle = col.rule; ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
+  ctx.fillStyle = col.soft; ctx.font = '11.5px Inter, system-ui, sans-serif';
+  [-1, -0.5, 0, 0.5, 1].forEach((t, i) => {
+    ctx.textAlign = i === 0 ? 'left' : i === 4 ? 'right' : 'center';
+    ctx.fillText((1 + t * span).toFixed(3), bx + ((t + 1) / 2) * bw, by + bh + 16);
+  });
+  ctx.textAlign = 'center';
+  ctx.fillText('distance ratio', bx + bw / 2, by + bh + 34);
+
+}
+
+onTheme(draw);
+draw();
+})();
+</script>
+
+</body>
+</html>

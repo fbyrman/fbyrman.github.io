@@ -1,0 +1,263 @@
+/* ---------------- tokens added for this page ---------------- */
+:root {
+  /* The two points of Figure 2: the cone apex (text) and its partner (image).
+     Validated for colour-blind separation against --eq-bg in both modes. */
+  --c-p1:     #1F5FAE;
+  --c-p2:     #C0632A;
+  /* Diverging ramp for ratio maps: below 1, exactly 1, above 1. */
+  --div-lo:   #2A5FA8;
+  --div-mid:  #F2F0EA;
+  --div-hi:   #B5562A;
+  /* The three image-caption pairs of Figures 1 and 2 (validated all-pairs;
+     every point also carries a direct label). */
+  --pair-1:   #2A6BC4;
+  --pair-2:   #C0632A;
+  --pair-3:   #178F66;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --c-p1:     #5A8ED8;
+    --c-p2:     #C8733C;
+    --div-lo:   #6A9AE0;
+    --div-mid:  #24262D;
+    --div-hi:   #E08A55;
+    --pair-1:   #5A8ED8;
+    --pair-2:   #C8733C;
+    --pair-3:   #2BA87B;
+  }
+}
+:root[data-theme="dark"] {
+  --c-p1:     #5A8ED8;
+  --c-p2:     #C8733C;
+  --div-lo:   #6A9AE0;
+  --div-mid:  #24262D;
+  --div-hi:   #E08A55;
+  --pair-1:   #5A8ED8;
+  --pair-2:   #C8733C;
+  --pair-3:   #2BA87B;
+}
+
+/* ---------------- hero additions ---------------- */
+.hero .back { margin: 0 0 1.2rem; font-size: 0.85rem; }
+.hero .back a { color: var(--ink-soft); text-decoration: none; }
+.hero .back a:hover { color: var(--accent); }
+/* A paper title is longer than the Gromov hero expects: smaller and wider. */
+.hero h1.paper-title {
+  font-size: clamp(1.8rem, 3.4vw, 2.6rem);
+  line-height: 1.15;
+  max-width: 30ch;
+}
+.hero .authors {
+  margin: 1.1rem 0 0;
+  font-size: 1.1rem;
+  color: var(--ink);
+}
+.hero .authors .me { font-weight: 700; }
+.hero .venue {
+  margin: 0.4rem 0 2.6rem;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+.hero .venue a { color: var(--accent); }
+
+/* ---------------- interactive figures ---------------- */
+.xp-fig {
+  background: var(--eq-bg);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  padding: 1rem 1.1rem 1.1rem;
+  margin: 1.7rem 0 0;
+}
+.xp-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.2rem;
+  margin: 0 0 0.8rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+.xp-controls .var { font-family: "Source Serif 4", serif; font-style: italic; font-weight: 700; color: var(--ink); }
+.xp-controls label { display: inline-flex; align-items: center; gap: 0.5rem; }
+.xp-controls input[type="range"] { width: 120px; accent-color: var(--accent); }
+.xp-controls output { font-variant-numeric: tabular-nums; min-width: 2.6em; color: var(--ink); }
+.xp-btn {
+  font-family: Inter, sans-serif;
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+.xp-btn:hover { color: var(--accent); }
+
+.xp-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 3px;
+  background: var(--paper-raise);
+  touch-action: none;
+}
+.xp-canvas.landscape { cursor: crosshair; }
+
+.xp-readout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem 1.4rem;
+  margin-top: 0.8rem;
+  font-family: "Source Serif 4", serif;
+  font-size: 0.92rem;
+}
+.xp-readout.three { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 640px) { .xp-readout, .xp-readout.three { grid-template-columns: 1fr; } }
+.xp-readout .cell {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.22rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.xp-readout .cell .rk { flex: 1; white-space: nowrap; }
+.xp-readout .cell .rv { font-variant-numeric: tabular-nums; }
+.xp-readout .cell .rv.soft { color: var(--ink-soft); }
+.xp-readout .swatch { width: 9px; height: 9px; border-radius: 50%; align-self: center; }
+.xp-readout .meta .swatch { background: var(--c-meta); }
+.xp-readout .sgd .swatch { background: var(--c-sgd); }
+
+.xp-seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.xp-seg button {
+  font-family: Inter, sans-serif;
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  padding: 0.2rem 0.65rem;
+  cursor: pointer;
+}
+.xp-seg button + button { border-left: 1px solid var(--rule); }
+.xp-seg button[aria-checked="true"] { background: var(--paper-raise); color: var(--ink); }
+.xp-controls .check { gap: 0.4rem; }
+.xp-controls .check input { accent-color: var(--accent); margin: 0; }
+/* Citations, links and references */
+a.cite { color: var(--accent); text-decoration: none; border-bottom: 1px dotted var(--accent-soft); }
+a.cite:hover { color: var(--gold); border-color: var(--gold); }
+.xp-refs li:target { background: var(--eq-bg-hit); border-radius: 3px; }
+.xp-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.9rem; margin: 0 0 1.6rem; max-width: 42rem; }
+@media (max-width: 640px) { .xp-links { grid-template-columns: 1fr; } }
+.xp-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.8rem 1rem;
+  background: var(--eq-bg);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+.xp-link:hover { border-color: var(--accent); }
+.xp-link-kind { font-family: Inter, sans-serif; font-size: 0.72rem; font-weight: 600; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; }
+.xp-link-title { font-family: "Source Serif 4", serif; font-size: 1.05rem; color: var(--accent); }
+.xp-refs { padding-left: 1.4rem; max-width: 42rem; font-size: 0.92rem; line-height: 1.55; }
+.xp-refs li { margin: 0 0 0.6rem; padding: 0.1rem 0.3rem; }
+.xp-refs li::marker { color: var(--ink-soft); font-family: Inter, sans-serif; font-size: 0.8rem; }
+.xp-refs a { color: var(--accent); }
+
+/* Figures 6-8: plane and hyperboloid side by side */
+.xp-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
+@media (max-width: 640px) { .xp-pair { grid-template-columns: 1fr; } }
+.xp-pane-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0 0 0.35rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+.xp-pane-label .space { font-family: "Source Serif 4", serif; font-size: 1rem; color: var(--ink); }
+.xp-canvas.rotate { cursor: grab; }
+.xp-canvas.rotate:active, .xp-canvas.is-dragging { cursor: grabbing; }
+.xp-presets { display: inline-flex; gap: 0.9rem; }
+
+
+/* Results tables: one block of rows per model */
+table.results tr.enc-first td { border-top: 1px solid var(--rule); }
+table.results td.model[rowspan] { vertical-align: top; padding-top: 0.3rem; }
+
+/* Figure 1: contrastive pre-training diagram */
+.xp-svg .cl-panel { fill: var(--paper-raise); stroke: var(--rule); }
+.xp-svg .cl-caption { font-family: "Source Serif 4", serif; font-style: italic; font-size: 15px; fill: var(--ink-soft); }
+.xp-svg .cl-caption.is-hi { fill: var(--ink); font-weight: 700; }
+.xp-svg .cl-encoder { fill: var(--paper-raise); stroke: var(--ink-soft); stroke-width: 1.2px; }
+.xp-svg .cl-encoder-label { font-family: Inter, sans-serif; font-weight: 600; font-size: 14px; fill: var(--ink); }
+.xp-svg .cl-arrow { stroke: var(--ink-soft); stroke-width: 1.4px; }
+.xp-svg .cl-head { fill: var(--ink-soft); }
+.xp-svg .cl-vbox { fill: var(--eq-bg); stroke: var(--rule); stroke-width: 1.2px; }
+.xp-svg .cl-vbox.is-hi, .xp-svg .cl-tile.is-hi { stroke: var(--accent); stroke-width: 2.4px; }
+.xp-svg .cl-vec { font-family: "Source Serif 4", serif; font-style: italic; font-weight: 700; font-size: 15px; fill: var(--ink); pointer-events: none; }
+.xp-svg .cl-tile { fill: none; stroke: var(--rule); stroke-width: 1.2px; }
+.xp-svg .cl-cell rect { fill: var(--paper-raise); stroke: var(--rule); stroke-width: 1px; }
+.xp-svg .cl-cell.is-diag rect { fill: var(--eq-bg-hit); stroke: var(--gold); stroke-width: 1.6px; }
+.xp-svg .cl-cell.is-hi rect { stroke: var(--accent); stroke-width: 2.6px; }
+.xp-svg .cl-cell text { font-family: "Source Serif 4", serif; font-style: italic; font-size: 14px; fill: var(--ink); pointer-events: none; }
+.xp-svg .cl-cell { cursor: default; }
+.xp-svg .cl-info-head { font-family: Inter, sans-serif; font-weight: 600; font-size: 14px; fill: var(--ink); }
+.xp-svg .cl-info { font-family: "Source Serif 4", serif; font-size: 15px; fill: var(--ink-soft); }
+
+/* Figure 2: contrastive learning on a circle */
+.xp-svg .ct-rim { fill: none; stroke: var(--ink-soft); stroke-width: 1.2px; }
+.xp-svg .ct-wire { fill: none; stroke: var(--ink-soft); stroke-width: 1px; stroke-opacity: 0.35; }
+.xp-svg .ct-wire.is-back { stroke-opacity: 0.12; stroke-dasharray: 2 3; }
+.xp-svg .ct-point.is-back { opacity: 0.35; }
+.xp-svg .ct-origin { fill: var(--ink-soft); }
+.xp-svg .ct-title { font-family: Inter, sans-serif; font-size: 12px; font-weight: 600; fill: var(--ink-soft); }
+.xp-svg .ct-vec { stroke-width: 1.2px; stroke-opacity: 0.45; }
+.xp-svg .ct-ring { fill: none; stroke-width: 3px; }
+.xp-svg .ct-square { stroke: var(--eq-bg); stroke-width: 2px; }
+.xp-svg .ct-word { font-family: "Source Serif 4", serif; font-style: italic; font-size: 14px; fill: var(--ink); }
+.xp-svg .ct-cell-bg { fill: var(--paper-raise); }
+.xp-svg .ct-cell { fill: var(--accent); }
+.xp-svg .ct-diag { fill: none; stroke: var(--gold); stroke-width: 2px; }
+.xp-svg .ct-val { font-family: Inter, sans-serif; font-size: 13px; font-variant-numeric: tabular-nums; fill: var(--ink); }
+.xp-svg .ct-val.on-dark { fill: var(--eq-bg); font-weight: 600; }
+#fig-contrast svg { touch-action: none; }
+
+/* Figure 3: a hierarchy across modalities */
+.xp-svg .tr-axis { stroke: var(--rule); stroke-width: 2px; }
+.xp-svg .tr-axis-head { fill: var(--rule); }
+.xp-svg .tr-axis-label { font-family: Inter, sans-serif; font-size: 11.5px; fill: var(--ink-soft); }
+.xp-svg .tr-edge { stroke: var(--ink-soft); stroke-width: 1.4px; stroke-opacity: 0.5; }
+.xp-svg .tr-edge.is-hi { stroke: var(--accent); stroke-width: 2.6px; stroke-opacity: 1; }
+.xp-svg .tr-pill { fill: var(--eq-bg); stroke: var(--rule); stroke-width: 1.2px; }
+.xp-svg .tr-node.is-hi .tr-pill, .xp-svg .tr-node.is-hi .tr-frame { stroke: var(--accent); stroke-width: 2.4px; }
+.xp-svg .tr-node.is-dim { opacity: 0.4; }
+.xp-svg .tr-frame { fill: none; stroke: var(--rule); stroke-width: 1.2px; }
+.xp-svg .tr-word { font-family: "Source Serif 4", serif; font-weight: 600; font-size: 15px; fill: var(--ink); }
+.xp-svg .tr-caption { font-family: "Source Serif 4", serif; font-style: italic; font-size: 14px; fill: var(--ink); }
+.xp-svg .tr-node { cursor: default; }
+
+/* Figure 4: a tree in the Poincaré disk */
+.xp-svg .pd-bg { fill: var(--paper-raise); }
+.xp-svg .pd-rim { fill: none; stroke: var(--ink-soft); stroke-width: 1.4px; }
+.xp-svg .pd-edge { fill: none; stroke: var(--ink-soft); stroke-width: 1.1px; stroke-opacity: 0.8; }
+.xp-svg .pd-node { fill: var(--accent); stroke: var(--eq-bg); stroke-width: 0.8px; }
+.xp-svg .pd-node.is-focus { fill: var(--gold); }
+
+/* Figure 5: the exponential map */
+.xp-svg .lf-band { fill: var(--paper-raise); }
+.xp-svg .lf-band.is-hyp { fill: var(--eq-bg-hit); }
+.xp-svg .lf-band-label { font-family: Inter, sans-serif; font-size: 11px; font-weight: 600; fill: var(--ink-soft); letter-spacing: 0.04em; }
+.xp-svg .lf-exp { fill: var(--eq-bg-hit); stroke: var(--gold); stroke-width: 1.6px; }
+
+/* Figure 6: one row per operation */
+.op-row + .op-row { margin-top: 1.4rem; padding-top: 1.1rem; border-top: 1px solid var(--rule); }
+.op-row-title { margin: 0 0 0.5rem; font-family: Inter, sans-serif; font-size: 0.82rem; font-weight: 600; color: var(--ink); }
+.op-row + .op-row .xp-pane-label { display: none; }   /* column headings only above the first row */

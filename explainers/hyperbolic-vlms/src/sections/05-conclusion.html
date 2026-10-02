@@ -1,0 +1,14 @@
+<section class="tex-section" id="sec-conclusion">
+  <h2 class="sec-title"><span class="num">5</span> Conclusion</h2>
+
+  <p>
+    We asked whether the curvature in current hyperbolic VLMs does the geometric work it
+    is credited with, and found that it does not. The exponential map reduces to the
+    identity early in training, leaving the embedding space effectively Euclidean for the
+    rest of training and at inference. Consistent with this, deleting the map at read-out
+    leaves the scores unchanged, and Euclidean controls trained with the same losses match
+    the hyperbolic models closely. Hyperbolic VLMs have proven effective in practice, and we
+    hope these results encourage researchers to take a critical look at their losses. With the right optimization, we
+    believe they can do much better, and distortion ratios offer a way to measure it.
+  </p>
+</section>

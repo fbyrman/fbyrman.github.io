@@ -1,0 +1,136 @@
+<section class="tex-section" id="sec-quantify">
+  <h2 class="sec-title"><span class="num">3</span> How to quantify hyperbolicity</h2>
+
+  <p>
+    So how do you measure how hyperbolic a model is? The curvature alone does not tell
+    you much. What matters is how curved the space is where the embeddings actually end
+    up. And since the curvature only enters through the exponential map, the most direct
+    test is to compare what the model computes just before that map with what it computes
+    just after it.
+  </p>
+
+  <p>
+    Hyperbolic VLMs build their losses out of three geometric operations: the
+    <strong class="term">distance</strong> between two embeddings, and the
+    <strong class="term">exterior angle</strong> and <strong class="term">half-aperture</strong>
+    of the entailment cones that encode the hierarchy. Figure 6 shows each one before and
+    after the map; the ratio between the two tells you how much the map changed it.
+  </p>
+
+  <figure class="xp-fig" id="fig-ops">
+    <div class="xp-controls">
+      <label>curvature <span class="var">c</span>
+        <input type="range" min="-1.301" max="0.477" step="0.001" value="0" data-role="c">
+        <output data-role="c-val">1.0</output>
+      </label>
+      <button type="button" class="xp-btn" data-role="reset">Reset</button>
+    </div>
+    <div class="op-row" data-op="dist">
+      <p class="op-row-title">Distance</p>
+      <div class="xp-pair">
+        <div>
+          <p class="xp-pane-label"><span class="space">$\mathbb{R}^2$, before the map</span><span>drag the points</span></p>
+          <canvas class="xp-canvas" width="420" height="420" data-role="plane"
+            aria-label="Two points and the distance between them in the Euclidean plane"></canvas>
+        </div>
+        <div>
+          <p class="xp-pane-label"><span class="space">$\mathbb{L}^2_c$, after the map</span><span>drag to rotate</span></p>
+          <canvas class="xp-canvas rotate" width="420" height="420" data-role="hyp"
+            aria-label="Two points and the distance between them on the hyperboloid"></canvas>
+        </div>
+      </div>
+      <div class="xp-readout three">
+        <div class="cell"><span class="rk">in ℝ²</span><span class="rv" data-role="E"></span></div>
+        <div class="cell"><span class="rk">on 𝕃²<sub>c</sub></span><span class="rv" data-role="L"></span></div>
+        <div class="cell"><span class="rk">ratio</span><span class="rv" data-role="R"></span></div>
+      </div>
+    </div>
+    <div class="op-row" data-op="ext">
+      <p class="op-row-title">Exterior angle</p>
+      <div class="xp-pair">
+        <div>
+          <p class="xp-pane-label"><span class="space">$\mathbb{R}^2$, before the map</span><span>drag the points</span></p>
+          <canvas class="xp-canvas" width="420" height="420" data-role="plane"
+            aria-label="Two points and the exterior angle at the first in the Euclidean plane"></canvas>
+        </div>
+        <div>
+          <p class="xp-pane-label"><span class="space">$\mathbb{L}^2_c$, after the map</span><span>drag to rotate</span></p>
+          <canvas class="xp-canvas rotate" width="420" height="420" data-role="hyp"
+            aria-label="Two points and the exterior angle at the first on the hyperboloid"></canvas>
+        </div>
+      </div>
+      <div class="xp-readout three">
+        <div class="cell"><span class="rk">in ℝ²</span><span class="rv" data-role="E"></span></div>
+        <div class="cell"><span class="rk">on 𝕃²<sub>c</sub></span><span class="rv" data-role="L"></span></div>
+        <div class="cell"><span class="rk">ratio</span><span class="rv" data-role="R"></span></div>
+      </div>
+    </div>
+    <div class="op-row" data-op="aper">
+      <p class="op-row-title">Half-aperture</p>
+      <div class="xp-pair">
+        <div>
+          <p class="xp-pane-label"><span class="space">$\mathbb{R}^2$, before the map</span><span>drag the point</span></p>
+          <canvas class="xp-canvas" width="420" height="420" data-role="plane"
+            aria-label="One point and its entailment cone in the Euclidean plane"></canvas>
+        </div>
+        <div>
+          <p class="xp-pane-label"><span class="space">$\mathbb{L}^2_c$, after the map</span><span>drag to rotate</span></p>
+          <canvas class="xp-canvas rotate" width="420" height="420" data-role="hyp"
+            aria-label="One point and its entailment cone on the hyperboloid"></canvas>
+        </div>
+      </div>
+      <div class="xp-readout three">
+        <div class="cell"><span class="rk">in ℝ²</span><span class="rv" data-role="E"></span></div>
+        <div class="cell"><span class="rk">on 𝕃²<sub>c</sub></span><span class="rv" data-role="L"></span></div>
+        <div class="cell"><span class="rk">ratio</span><span class="rv" data-role="R"></span></div>
+      </div>
+    </div>
+  </figure>
+  <p class="figure-caption">
+    <span class="figure-num">Figure 6.</span> Distance (top), exterior angle (middle) and
+    half-aperture (bottom), before (left) and after (right) the exponential map.
+  </p>
+
+  <p>
+    Comparing each operation before and after the map gives three
+    <strong class="term">distortion ratios</strong>, and we derive a closed-form
+    expression for each. They turn out to depend on just four numbers: the norms $r_1$
+    and $r_2$ of the encoder outputs, the angle $\theta$ between them, and the curvature
+    $c$. The distance ratio, for example, is the hyperbolic law of cosines divided by the
+    Euclidean one:
+  </p>
+
+  <div class="equation" id="eq:rd">\[
+    r_d(r_1, r_2, \theta; c) =
+    \frac{\operatorname{arcosh}\!\big( \cosh(\sqrt{c}\, r_1) \cosh(\sqrt{c}\, r_2) - \sinh(\sqrt{c}\, r_1) \sinh(\sqrt{c}\, r_2) \cos\theta \big)}
+    {\sqrt{c}\, \sqrt{r_1^2 + r_2^2 - 2 r_1 r_2 \cos\theta}}.
+  \]</div>
+
+  <p>
+    At a given curvature, the distance ratio is therefore a function of three numbers,
+    and fills a cube over $(r_1, r_2, \theta)$; the same goes for the exterior angle
+    ratio. To read the cube, we fix $r_1$ and take a two-dimensional slice over $r_2$
+    and $\theta$, as in Figure 7. In the next section, $r_1$ will be the most common
+    radius of a model's text embeddings.
+  </p>
+
+  <figure class="xp-fig" id="fig-cube">
+    <div class="xp-controls">
+      <label><span><span class="var">r</span><sub>1</sub></span>
+        <input type="range" min="0.1" max="1.45" step="0.01" value="0.8" data-role="r1">
+        <output data-role="r1-val">0.80</output>
+      </label>
+      <label><span class="var">c</span>
+        <input type="range" min="-1.301" max="1" step="0.001" value="0" data-role="c">
+        <output data-role="c-val">1.0</output>
+      </label>
+    </div>
+    <canvas class="xp-canvas landscape" width="860" height="470" data-role="canvas"
+      aria-label="A cube of distance-ratio values over r1, r2 and theta, cut at the chosen r1, next to the two-dimensional slice at that cut"></canvas>
+  </figure>
+  <p class="figure-caption">
+    <span class="figure-num">Figure 7.</span> The distance ratio $r_d$ fills a cube over
+    the radii $r_1, r_2$ and the angle $\theta$ (left). Cutting it at a fixed $r_1$ gives
+    a two-dimensional slice (right).
+  </p>
+</section>

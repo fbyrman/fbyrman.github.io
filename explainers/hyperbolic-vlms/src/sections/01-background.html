@@ -1,0 +1,160 @@
+<section class="tex-section" id="sec-background">
+  <h2 class="sec-title"><span class="num">1</span> Background</h2>
+
+  <div class="tex-subsection" id="subsec-clip">
+    <h3 class="subsec-title"><span class="num">1.1</span> Learning from images and captions</h3>
+
+    <p>
+      One of the most influential papers in recent AI is CLIP
+      (<a class="cite" href="#ref-radford2021">Radford et al., 2021</a>). Its insight: the internet is
+      full of images that come with a caption, and that pairing can be used as a powerful
+      training signal. An <strong class="term">image encoder</strong>
+      and a <strong class="term">text encoder</strong> map their inputs into one shared
+      <strong class="term">latent space</strong>, and the model is rewarded for placing each
+      image closer to its own caption than to all the mismatched ones.
+    </p>
+
+    <figure class="xp-fig" id="fig-clip">
+      <svg class="xp-svg" viewBox="0 0 860 400" role="img"
+        aria-label="Captions go through a text encoder and images through an image encoder; every image vector is compared with every text vector in a similarity matrix whose diagonal holds the matching pairs"></svg>
+    </figure>
+    <p class="figure-caption">
+      <span class="figure-num">Figure 1.</span> Contrastive pre-training on a batch of
+      three pairs. Each image vector $I_i$ is compared with each text vector $T_j$. The
+      highlighted cells on the diagonal are the true pairs, whose similarity should go up; every
+      other cell is a mismatch, whose similarity should go down. Hover over a cell to see
+      which image and caption it compares.
+    </p>
+
+    <p>
+      Training is a matching game. For a batch of $N$ pairs, every image is asked which of
+      the $N$ captions is its own, and every caption which image. The
+      <strong class="term">contrastive loss</strong> is low only when each one picks its
+      true partner. It never says where things should go, only how they should relate. Try
+      it in Figure 2: press <em>Train</em> and watch the matching pairs find each other on
+      the sphere while the different pairs spread as far apart as they can.
+    </p>
+
+    <figure class="xp-fig" id="fig-contrast">
+      <div class="xp-controls">
+        <button type="button" class="xp-btn" data-role="train">Train</button>
+        <button type="button" class="xp-btn" data-role="shuffle">Shuffle</button>
+        <span class="xp-hint">drag a point to move it, or the sphere to rotate it</span>
+      </div>
+      <svg class="xp-svg" viewBox="0 0 860 380" role="group"
+        aria-label="Three images and three captions as points on a sphere, next to their similarity matrix"></svg>
+      <div class="xp-readout three">
+        <div class="cell"><span class="rk">training steps</span><span class="rv" data-role="steps"></span></div>
+        <div class="cell"><span class="rk">contrastive loss</span><span class="rv" data-role="loss"></span></div>
+        <div class="cell"><span class="rk">images matched</span><span class="rv" data-role="acc"></span></div>
+      </div>
+    </figure>
+    <p class="figure-caption">
+      <span class="figure-num">Figure 2.</span> A three-dimensional latent space. Squares
+      are image embeddings, rings are caption embeddings, and each pair shares a colour.
+      The matrix on the right shows the cosine similarity of every image with every
+      caption; training drives the diagonal to 1. The loss uses a temperature of
+      $\tau = 0.3$.
+    </p>
+
+    <p>
+      Real models do the same with hundreds of dimensions and batches of tens of thousands
+      of pairs, and what comes out is a space organized by meaning. That makes
+      <strong class="term">zero-shot classification</strong> possible: write a caption per
+      class, <em>“a photo of a dog”</em>, and pick the one closest to the image.
+      <strong class="term">Retrieval</strong> works the same way in either direction: embed
+      a text query and return the closest images, or embed an image and return the
+      closest captions.
+    </p>
+  </div>
+
+  <div class="tex-subsection" id="subsec-hyperbolic">
+    <h3 class="subsec-title"><span class="num">1.2</span> Hierarchies and hyperbolic space</h3>
+
+    <p>
+      A recurring lesson in machine learning is that models built to match the structure
+      of their data learn more from less. The space in which a model embeds its data is one
+      such design choice, and CLIP chose the unit sphere. On a sphere every embedding has
+      the same length, so all meaning has to live in its direction. That is enough to tell
+      whether a caption belongs to an image, but not whether one concept is more general
+      than another. And vision-language data arguably has that ordering: <em>animal</em> is
+      more general than <em>dog</em>, and a caption more general than the image it
+      describes.
+    </p>
+
+    <figure class="xp-fig" id="fig-tree">
+      <svg class="xp-svg" viewBox="0 0 860 400" role="img"
+        aria-label="A tree from general to specific: thing, then animal and vehicle, then dog, cat and car, then a caption for each, then a photo for each"></svg>
+    </figure>
+    <p class="figure-caption">
+      <span class="figure-num">Figure 3.</span> Vision-language data read as a hierarchy,
+      from general words down to specific images. Hover over a node to see everything it falls under.
+    </p>
+
+    <p>
+      If the data is organized this way, the obvious first step is to drop the
+      normalization and use all of Euclidean space, letting the distance from the origin
+      express how general something is. But trees fit poorly there. The number of nodes
+      multiplies with every level, while the room at a given distance from the origin only
+      grows in proportion to that distance, so deep levels get squeezed together. In
+      <strong class="term">hyperbolic space</strong> that room grows exponentially, as fast
+      as a tree branches. Figure 4 shows a tree in the Poincaré disk, a map of the entire
+      hyperbolic plane onto a disc. All edges have the same length; they only look shorter
+      near the rim, where the map squeezes in ever more space.
+    </p>
+
+    <figure class="xp-fig" id="fig-disk">
+      <div class="xp-controls">
+        <label>depth
+          <input type="range" min="1" max="7" step="1" value="6" data-role="depth">
+          <output data-role="depth-val">6</output>
+        </label>
+      </div>
+      <svg class="xp-svg" viewBox="0 0 860 450" role="img"
+        aria-label="A tree in the Poincaré disk with edges of equal hyperbolic length; clicking a node moves it to the centre"></svg>
+    </figure>
+    <p class="figure-caption">
+      <span class="figure-num">Figure 4.</span> A binary tree in the Poincaré disk, with
+      every edge of hyperbolic length 1. Click a node to move it to the centre. The move
+      preserves all lengths, and the tree looks the same from every node.
+    </p>
+
+    <p>
+      This is the idea behind <strong class="term">hyperbolic vision-language
+      models</strong> such as MERU (<a class="cite" href="#ref-desai2023">Desai et al., 2023</a>),
+      HyCoCLIP (<a class="cite" href="#ref-pal2025">Pal et al., 2025</a>), ARGENT
+      (<a class="cite" href="#ref-huynh2026">Huynh et al., 2026</a>) and PHyCLIP
+      (<a class="cite" href="#ref-yoshikawa2026">Yoshikawa and Matsubara, 2026</a>). They keep
+      CLIP's recipe but embed images and text in hyperbolic space, with general concepts
+      near the origin and specific ones further out. The encoders themselves are still
+      ordinary Euclidean networks, though. Their outputs only reach hyperbolic space at the
+      very end, through a single <strong class="term">exponential map</strong>, shown in
+      Figure 5.
+    </p>
+
+    <figure class="xp-fig" id="fig-lift">
+      <svg class="xp-svg" viewBox="0 0 860 140" role="img" data-role="pipeline"
+        aria-label="An image and a caption pass through Euclidean encoders to vectors v, which the exponential map carries to points x on the hyperbolic manifold"></svg>
+      <div class="xp-controls" style="margin-top: 0.9rem">
+        <label><span>length ‖<span class="var">v</span>‖</span>
+          <input type="range" min="0" max="2" step="0.01" value="1.4" data-role="r">
+          <output data-role="r-val">1.40</output>
+        </label>
+        <label>direction
+          <input type="range" min="0" max="359" step="1" value="35" data-role="dir">
+          <output data-role="dir-val">35°</output>
+        </label>
+        <span class="xp-hint">drag to rotate</span>
+      </div>
+      <canvas class="xp-canvas rotate" width="860" height="400" data-role="scene"
+        aria-label="The tangent plane touching the hyperboloid at its origin, with a vector v in the plane and its image x on the hyperboloid"></canvas>
+    </figure>
+    <p class="figure-caption">
+      <span class="figure-num">Figure 5.</span> The exponential map, the one hyperbolic
+      step in the model. An encoder output $\mathbf{v}$ (blue) lies in the flat plane that
+      touches the hyperboloid at its origin. The map walks the same distance in the same
+      direction along the surface, landing at $\mathbf{x}$ (orange). Shorten $\mathbf{v}$
+      and see how little the map then changes: near the origin the surface is almost flat.
+    </p>
+  </div>
+</section>
