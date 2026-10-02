@@ -4,6 +4,8 @@ import List from '../../components/List.astro';
 ---
 <Base title="Research">
   <h1>Research</h1>
-  <p class="muted">Papers and preprints.</p>
-  <List collection="research" />
+  <h2>Publications</h2>
+  <List collection="research" kind="publication" />
+  <h2>Research notes</h2>
+  <List collection="research" kind="note" />
 </Base>

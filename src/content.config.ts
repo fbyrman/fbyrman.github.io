@@ -17,6 +17,8 @@ const research = defineCollection({
     // A standalone page (e.g. an explainer) the entry links to directly;
     // such an entry gets no page of its own.
     page: z.string().optional(),
+    // 'publication' for work accepted at a venue, 'note' for other write-ups.
+    kind: z.enum(['publication', 'note']).default('publication'),
     draft: z.boolean().default(false),
   }),
 });
