@@ -1,0 +1,32 @@
+<section class="tex-section" id="sec-dncbm">
+  <h2 class="sec-title"><span class="num">2</span> Discover-then-Name CBMs</h2>
+
+  <p>
+    <strong class="term">Discover-then-Name CBMs</strong> (DN-CBMs)
+    (<a class="cite" href="#ref-rao2024">Rao et al., 2024</a>) turn this around. Rather
+    than fixing a concept set in advance and looking for it in images, they find the
+    concepts a vision model already knows, then names them (Figure 2):
+  </p>
+
+  <ol class="tex-list">
+    <li><strong>Discover.</strong> A sparse autoencoder
+      (<a class="cite" href="#ref-bricken2023">Bricken et al., 2023</a>) learns to
+      reconstruct CLIP image embeddings through 8,192
+      mostly silent neurons. Its decoder is then dropped.</li>
+    <li><strong>Name.</strong> Each neuron gets the word, out of 20,000, whose CLIP text
+      embedding is closest to its direction.</li>
+    <li><strong>Classify.</strong> A sparse linear probe maps the neurons to classes.</li>
+  </ol>
+
+  <figure class="xp-fig" id="fig-pipeline">
+    <img hidden data-role="photo" src="{{data:img/greenhouse.jpg}}" alt="">
+    <svg class="xp-svg" viewBox="0 0 860 445" role="img"
+      aria-label="Top: the sparse autoencoder is trained to reconstruct CLIP embeddings, after which its decoder is dropped. Bottom: an image of a greenhouse goes through CLIP and the trained encoder; five neurons fire, named greenhouse, plants, contemporary, planting and garden, and a linear probe turns them into the prediction greenhouse"></svg>
+  </figure>
+  <p class="figure-caption">
+    <span class="figure-num">Figure 2.</span> Top: the autoencoder is trained on
+    reconstruction alone, without labels. Bottom: the trained encoder explaining a
+    Places365 image; bars show each concept's contribution. Hover over a concept to find
+    its neuron.
+  </p>
+</section>

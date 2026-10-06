@@ -1,0 +1,72 @@
+<section class="tex-section" id="sec-background">
+  <h2 class="sec-title"><span class="num">1</span> Background</h2>
+
+  <div class="tex-subsection" id="subsec-cbm">
+    <h3 class="subsec-title"><span class="num">1.1</span> Predicting through concepts</h3>
+
+    <p>
+      Machine learning is increasingly deployed in high-stakes domains such as medicine
+      and finance. There, the reasoning behind a prediction often matters more than the
+      prediction itself, which motivates <strong class="term">explainable AI</strong>.
+      <strong class="term">Concept bottleneck models</strong> (CBMs)
+      (<a class="cite" href="#ref-koh2020">Koh et al., 2020</a>) make that reasoning
+      explicit by predicting in two steps:
+    </p>
+
+    <ol class="tex-list">
+      <li>a network maps the input to scores for a set of
+        human-interpretable <strong>concepts</strong>;</li>
+      <li>a linear layer predicts the label from those scores alone.</li>
+    </ol>
+
+    <p>
+      The concept layer is the bottleneck: nothing reaches the output without passing
+      through it. So every prediction comes with its reasons, and an expert who disagrees
+      with one can correct it and watch the prediction change. Try it in Figure 1.
+    </p>
+
+    <figure class="xp-fig" id="fig-cbm">
+      <div class="xp-controls">
+        <button type="button" class="xp-btn" data-role="reset">reset</button>
+        <span class="xp-hint">drag a concept's bar to change its score</span>
+      </div>
+      <svg class="xp-svg" viewBox="0 0 860 300" role="group"
+        aria-label="A photo of a horse goes through a concept predictor that scores six concepts; a linear layer turns the scores into probabilities for horse, zebra and cow. Dragging a concept's bar changes its score and the prediction"></svg>
+    </figure>
+    <p class="figure-caption">
+      <span class="figure-num">Figure 1.</span> A toy CBM. The concept
+      predictor scores the image on six concepts, and a linear layer turns the scores into
+      class probabilities. Drag <em>stripes</em> up and <em>saddle</em> down, and the
+      horse becomes a zebra.
+    </p>
+  </div>
+
+  <div class="tex-subsection" id="subsec-concepts">
+    <h3 class="subsec-title"><span class="num">1.2</span> Where the concepts come from</h3>
+
+    <p>
+      Training the concept predictor requires a concept set and, in the original
+      formulation, concept labels for every training image. Early CBMs therefore relied on expert annotation: bird attributes such as
+      <em>wing colour</em> and <em>bill shape</em> in CUB-200-2011
+      (<a class="cite" href="#ref-wah2011">Wah et al., 2011</a>), or radiologist-graded
+      features such as <em>joint space narrowing</em> in knee X-rays from the
+      Osteoarthritis Initiative
+      (<a class="cite" href="#ref-nevitt2006">Nevitt et al., 2006</a>). Such annotations
+      are costly and exist for few datasets.
+    </p>
+
+    <p>
+      Recent work removes this requirement with two large pretrained models. A
+      <strong>large language model</strong> generates the concept set, typically by
+      listing the visual features of each class
+      (<a class="cite" href="#ref-oikarinen2023">Oikarinen et al., 2023</a>;
+      <a class="cite" href="#ref-yang2023">Yang et al., 2023</a>). A
+      <strong>vision-language model</strong> such as CLIP
+      (<a class="cite" href="#ref-radford2021">Radford et al., 2021</a>), which embeds
+      images and text in a shared space, then scores each image on each concept by the
+      similarity of their embeddings. This makes CBMs applicable to any
+      dataset, but the concept set is still fixed in advance, independent of what the
+      vision model has actually learned.
+    </p>
+  </div>
+</section>

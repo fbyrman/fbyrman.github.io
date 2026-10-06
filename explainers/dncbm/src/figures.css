@@ -1,0 +1,213 @@
+/* ---------------- tokens added for this page ---------------- */
+:root {
+  /* The two neurons of Figure 3, and the two models of Figure 5.
+     Validated for colour-blind separation against --eq-bg in both modes. */
+  --c-p1:     #1F5FAE;
+  --c-p2:     #C0632A;
+  --c-orig:   #8A8C94;   /* the original DN-CBM */
+  --c-ft:     #1F5FAE;   /* our fine-tuned model */
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --c-p1:     #5A8ED8;
+    --c-p2:     #C8733C;
+    --c-orig:   #8E9099;
+    --c-ft:     #5A8ED8;
+  }
+}
+:root[data-theme="dark"] {
+  --c-p1:     #5A8ED8;
+  --c-p2:     #C8733C;
+  --c-orig:   #8E9099;
+  --c-ft:     #5A8ED8;
+}
+
+/* ---------------- hero additions ---------------- */
+.hero .back { margin: 0 0 1.2rem; font-size: 0.85rem; }
+.hero .back a { color: var(--ink-soft); text-decoration: none; }
+.hero .back a:hover { color: var(--accent); }
+/* A paper title is longer than the Gromov hero expects: smaller and wider. */
+.hero h1.paper-title {
+  font-size: clamp(1.8rem, 3.4vw, 2.6rem);
+  line-height: 1.15;
+  max-width: 30ch;
+}
+.hero .authors {
+  margin: 1.1rem 0 0;
+  font-size: 1.1rem;
+  color: var(--ink);
+}
+.hero .authors .me { font-weight: 700; }
+.hero .venue {
+  margin: 0.4rem 0 2.6rem;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+.hero .venue a { color: var(--accent); }
+
+/* ---------------- interactive figures ---------------- */
+.xp-fig {
+  background: var(--eq-bg);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  padding: 1rem 1.1rem 1.1rem;
+  margin: 1.7rem 0 0;
+}
+.xp-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.2rem;
+  margin: 0 0 0.8rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+.xp-controls .var { font-family: "Source Serif 4", serif; font-style: italic; font-weight: 700; color: var(--ink); }
+.xp-controls label { display: inline-flex; align-items: center; gap: 0.5rem; }
+.xp-controls input[type="range"] { width: 120px; accent-color: var(--accent); }
+.xp-controls output { font-variant-numeric: tabular-nums; min-width: 2.6em; color: var(--ink); }
+.xp-btn {
+  font-family: Inter, sans-serif;
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+.xp-btn:hover { color: var(--accent); }
+
+.xp-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 3px;
+  background: var(--paper-raise);
+  touch-action: none;
+}
+
+
+.xp-seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.xp-seg button {
+  font-family: Inter, sans-serif;
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  padding: 0.2rem 0.65rem;
+  cursor: pointer;
+}
+.xp-seg button + button { border-left: 1px solid var(--rule); }
+.xp-seg button[aria-checked="true"] { background: var(--paper-raise); color: var(--ink); }
+.xp-controls .check { gap: 0.4rem; }
+.xp-controls .check input { accent-color: var(--accent); margin: 0; }
+
+/* Citations, links and references */
+a.cite { color: var(--accent); text-decoration: none; border-bottom: 1px dotted var(--accent-soft); }
+a.cite:hover { color: var(--gold); border-color: var(--gold); }
+.xp-refs li:target { background: var(--eq-bg-hit); border-radius: 3px; }
+.xp-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.9rem; margin: 0 0 1.6rem; max-width: 42rem; }
+@media (max-width: 640px) { .xp-links { grid-template-columns: 1fr; } }
+.xp-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.8rem 1rem;
+  background: var(--eq-bg);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+.xp-link:hover { border-color: var(--accent); }
+.xp-link-kind { font-family: Inter, sans-serif; font-size: 0.72rem; font-weight: 600; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; }
+.xp-link-title { font-family: "Source Serif 4", serif; font-size: 1.05rem; color: var(--accent); }
+.xp-refs { padding-left: 1.4rem; max-width: 42rem; font-size: 0.92rem; line-height: 1.55; }
+.xp-refs li { margin: 0 0 0.6rem; padding: 0.1rem 0.3rem; }
+.xp-refs li::marker { color: var(--ink-soft); font-family: Inter, sans-serif; font-size: 0.8rem; }
+.xp-refs a { color: var(--accent); }
+
+/* ---------------- shared by this page's SVG figures ---------------- */
+.xp-svg { display: block; width: 100%; height: auto; }
+.xp-svg text { font-family: Inter, sans-serif; }
+.xp-svg .lbl { font-size: 12px; fill: var(--ink-soft); }
+.xp-svg .lbl-strong { font-size: 13px; font-weight: 600; fill: var(--ink); }
+.xp-svg .word { font-family: "Source Serif 4", serif; font-style: italic; font-size: 15px; fill: var(--ink); }
+.xp-svg .arrow { stroke: var(--ink-soft); stroke-width: 1.4px; fill: none; }
+.xp-svg .head { fill: var(--ink-soft); }
+.xp-svg .box { fill: var(--paper-raise); stroke: var(--ink-soft); stroke-width: 1.2px; }
+.xp-svg .stage { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; fill: var(--gold); }
+
+/* Figure 1: a toy concept bottleneck model */
+.xp-hint { font-style: italic; }
+.xp-svg .bottleneck { fill: none; stroke: var(--gold); stroke-width: 1.2px; stroke-dasharray: 4 3; }
+.xp-svg .concept { cursor: ew-resize; touch-action: none; }
+.xp-svg .concept:hover .word { fill: var(--accent); }
+.xp-svg .concept.is-edited .bar { fill: var(--gold); }
+.xp-svg .concept.is-edited .word { font-weight: 700; }
+.xp-svg .cls { font-family: "Source Serif 4", serif; font-size: 15px; fill: var(--ink-soft); }
+.xp-svg .cls.is-best { font-weight: 700; fill: var(--ink); }
+.xp-svg .cls-bar { fill: var(--c-orig); }
+.xp-svg .cls-bar.is-best { fill: var(--accent); }
+
+/* Figure 2: the DN-CBM pipeline */
+.xp-svg .neuron { fill: var(--eq-bg); stroke: var(--rule); stroke-width: 1.2px; }
+.xp-svg .neuron.on { fill: var(--gold); stroke: var(--gold); }
+.xp-svg .neuron.on.is-hi { stroke: var(--accent); stroke-width: 2.4px; }
+.xp-svg .link { stroke: var(--gold); stroke-width: 1.2px; stroke-opacity: 0.55; fill: none; }
+.xp-svg .link.is-hi { stroke: var(--accent); stroke-opacity: 1; stroke-width: 2px; }
+.xp-svg .bar { fill: var(--accent); }
+.xp-svg .bar-bg { fill: var(--paper-raise); }
+.xp-svg .contrib { cursor: default; }
+.xp-svg .contrib.is-hi .word { fill: var(--accent); font-weight: 700; }
+.xp-svg .val { font-size: 12px; font-variant-numeric: tabular-nums; fill: var(--ink-soft); }
+.xp-svg .pred { font-family: "Source Serif 4", serif; font-size: 16px; font-weight: 600; fill: var(--ink); }
+
+/* Figure 3: naming in CLIP space */
+.xp-svg .plane { fill: var(--paper-raise); }
+.xp-svg .unit { fill: none; stroke: var(--rule); stroke-width: 1px; stroke-dasharray: 3 4; }
+.xp-svg .txt-vec { stroke: var(--ink-soft); stroke-width: 1.4px; stroke-opacity: 0.6; }
+.xp-svg .txt-dot { fill: var(--ink-soft); }
+.xp-svg .word.is-named { font-weight: 700; }
+.xp-svg .dict { stroke-width: 2.6px; stroke-linecap: round; }
+.xp-svg .dict.p1 { stroke: var(--c-p1); }
+.xp-svg .dict.p2 { stroke: var(--c-p2); }
+.xp-svg .handle { stroke: var(--eq-bg); stroke-width: 2.5px; cursor: grab; }
+.xp-svg .handle:active { cursor: grabbing; }
+.xp-svg .handle.p1 { fill: var(--c-p1); }
+.xp-svg .handle.p2 { fill: var(--c-p2); }
+.xp-svg .angle { fill: none; stroke-width: 1.4px; stroke-dasharray: 3 3; }
+.xp-svg .angle.p1 { stroke: var(--c-p1); }
+.xp-svg .angle.p2 { stroke: var(--c-p2); }
+.xp-svg .pname { font-family: "Source Serif 4", serif; font-style: italic; font-weight: 700; font-size: 15px; }
+.xp-svg .pname.p1 { fill: var(--c-p1); }
+.xp-svg .pname.p2 { fill: var(--c-p2); }
+.xp-svg .score-bar.p1 { fill: var(--c-p1); }
+.xp-svg .score-bar.p2 { fill: var(--c-p2); }
+
+/* Figure 4: top-activating images */
+.xp-canvas.grid { background: none; }
+
+/* Figure 5: explanations before and after fine-tuning */
+.xp-svg .bar.orig { fill: var(--c-orig); }
+.xp-svg .bar.ft { fill: var(--c-ft); }
+.xp-svg .panel-title { font-size: 13px; font-weight: 600; fill: var(--ink); }
+.xp-svg .panel-title.ft { fill: var(--c-ft); }
+.xp-svg .gt { font-size: 12px; fill: var(--ink-soft); }
+.xp-svg .gt .ok { fill: var(--ink); font-weight: 600; }
+
+/* Lists keep the measure of the paragraphs around them */
+.tex-list { margin: 0 0 1.05rem; padding-left: 1.6rem; max-width: 36.5rem; }
+.tex-list li { margin: 0 0 0.55rem; padding-left: 0.2rem; }
+
+/* Figure 2: the training band */
+.xp-svg .box.ghost { fill: none; stroke-dasharray: 4 3; }
+.xp-svg .arrow.ghost { stroke-dasharray: 4 3; }
+.xp-svg .loop { fill: none; stroke: var(--gold); stroke-width: 1.4px; stroke-dasharray: 4 3; }
+.xp-svg .head.ghost { fill: var(--gold); }
+.xp-svg .divider { stroke: var(--rule); stroke-width: 1px; }

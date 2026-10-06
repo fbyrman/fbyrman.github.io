@@ -1,0 +1,93 @@
+<section class="tex-section" id="sec-alignment">
+  <h2 class="sec-title"><span class="num">5</span> Pulling neurons towards their names</h2>
+
+  <p>
+    We give training the incentive it lacks. For 30 more epochs we fine-tune the
+    autoencoder with an extra term that rewards active neurons $\mathbf{z}$ for pointing
+    at their names (Figure 6):
+  </p>
+
+  <div class="equation" id="eq:loss">\[
+    \mathcal{L} = \underbrace{\|\mathrm{SAE}(\mathbf{a}) - \mathbf{a}\|_2^2 + \lambda_1 \|\mathbf{z}\|_1}_{\text{original objective}}
+    \; - \; C \, \frac{\mathbf{z}}{\|\mathbf{z}\|_2} \cdot \mathbf{v}.
+  \]</div>
+
+  <p>
+    Weighting by activation pulls hardest on the neurons that drive predictions. Too
+    large a $C$ spreads activations thinly over many neurons; at $C = 10^{-4}$ the mean
+    cosine score rises from 0.15 to 0.54.
+  </p>
+
+  <figure class="xp-fig naming-fig" id="fig-tune">
+    <div class="xp-controls">
+      <button type="button" class="xp-btn" data-role="tune">fine-tune</button>
+      <button type="button" class="xp-btn" data-role="reset">reset</button>
+    </div>
+    <svg class="xp-svg" viewBox="0 0 860 360" role="img"
+      aria-label="The sketch of Figure 3, where fine-tuning rotates each neuron towards the word it is named after"></svg>
+  </figure>
+  <p class="figure-caption">
+    <span class="figure-num">Figure 6.</span> Fine-tuning rotates each neuron towards its
+    name, raising its cosine score. Press <em>fine-tune</em>.
+  </p>
+
+  <p>
+    The worst-aligned neurons now fire for what they are called (Figure 7), and
+    explanations become meaningful (Figure 8). In a user study with 203 participants,
+    fine-tuned concepts were rated a better match for their images at every alignment
+    level, significantly so for the middle and worst groups, at $p &lt; 0.001$.
+  </p>
+
+  <figure class="xp-fig grid-fig" id="fig-grid-ft">
+    <div class="xp-controls">
+      <div class="xp-seg" role="radiogroup" aria-label="Before or after fine-tuning">
+        <button type="button" role="radio" aria-checked="true" data-set="low">before</button>
+        <button type="button" role="radio" aria-checked="false" data-set="low-ft">after fine-tuning</button>
+      </div>
+    </div>
+    <canvas class="xp-canvas grid" width="860" height="232" data-role="canvas"
+      aria-label="Top-activating images for the worst-aligned neurons before and after fine-tuning"></canvas>
+  </figure>
+  <p class="figure-caption">
+    <span class="figure-num">Figure 7.</span> The worst-aligned neurons of Figure 4,
+    before and after fine-tuning.
+  </p>
+
+  <figure class="xp-fig explain-fig" id="fig-explain-ft" data-models="orig ft">
+    <div class="xp-controls">
+      <div class="xp-seg" role="radiogroup" aria-label="Which image to explain">
+        <button type="button" role="radio" aria-checked="true" data-ex="horse">CIFAR-10</button>
+        <button type="button" role="radio" aria-checked="false" data-ex="rainforest">Places365</button>
+      </div>
+    </div>
+    <svg class="xp-svg" viewBox="0 0 860 250" role="img"
+      aria-label="One image with its prediction and top contributing concepts, for the original DN-CBM and for our fine-tuned model"></svg>
+  </figure>
+  <p class="figure-caption">
+    <span class="figure-num">Figure 8.</span> Figure 5 again, now next to our fine-tuned
+    model (blue). Each model has its own scale: after fine-tuning, activations are spread
+    over more neurons.
+  </p>
+
+  <p>
+    The cost is 0.7 to 4.1 points of accuracy (Table 1). Aligned names also sometimes
+    just repeat the class: <em>horses</em> for a horse is faithful but says little.
+  </p>
+
+  <p class="table-caption"><span class="table-num">Table 1.</span> Classification accuracy
+    (%) with CLIP ResNet-50, means over three probe runs. Places365* is a 10% subset.</p>
+  <div class="table-scroll">
+    <table class="results">
+      <thead>
+        <tr>
+          <th class="model">Model</th>
+          <th>ImageNet</th><th>Places365*</th><th>CIFAR-10</th><th>CIFAR-100</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="model">DN-CBM</td><td>72.7</td><td>50.0</td><td>86.7</td><td>68.5</td></tr>
+        <tr><td class="model">DN-CBM, fine-tuned (ours)</td><td>70.5</td><td>49.3</td><td>83.9</td><td>64.4</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>

@@ -1,0 +1,50 @@
+<section class="tex-section" id="sec-names">
+  <h2 class="sec-title"><span class="num">4</span> When the names don't fit</h2>
+
+  <p>
+    The original paper shows its best-aligned neurons, and they convince. But cosine
+    scores across the network fall from 0.42 to about 0, and the worst-aligned neurons
+    fire for images that have nothing to do with their names (Figure 4).
+  </p>
+
+  <figure class="xp-fig grid-fig" id="fig-grid">
+    <img hidden data-sheet="high" src="{{data:img/grid-high.jpg}}" alt="">
+    <img hidden data-sheet="low" src="{{data:img/grid-low.jpg}}" alt="">
+    <img hidden data-sheet="low-ft" src="{{data:img/grid-low-ft.jpg}}" alt="">
+    <div class="xp-controls">
+      <div class="xp-seg" role="radiogroup" aria-label="Which neurons to show">
+        <button type="button" role="radio" aria-checked="true" data-set="high">best-aligned</button>
+        <button type="button" role="radio" aria-checked="false" data-set="low">worst-aligned</button>
+      </div>
+    </div>
+    <canvas class="xp-canvas grid" width="860" height="232" data-role="canvas"
+      aria-label="Top-activating images for four named neurons across ImageNet, CIFAR-10, CIFAR-100 and Places365"></canvas>
+  </figure>
+  <p class="figure-caption">
+    <span class="figure-num">Figure 4.</span> The top-activating images per dataset for
+    four neurons, best- or worst-aligned.
+  </p>
+
+  <p>
+    These neurons drive predictions. DN-CBM explains a horse with <em>pelican</em>,
+    <em>michigan</em> and <em>aaliyah</em> (Figure 5): a correct prediction with an
+    unfaithful explanation.
+  </p>
+
+  <figure class="xp-fig explain-fig" id="fig-explain" data-models="orig">
+    <img hidden data-photo="horse" src="{{data:img/horse.jpg}}" alt="">
+    <img hidden data-photo="rainforest" src="{{data:img/rainforest.jpg}}" alt="">
+    <div class="xp-controls">
+      <div class="xp-seg" role="radiogroup" aria-label="Which image to explain">
+        <button type="button" role="radio" aria-checked="true" data-ex="horse">CIFAR-10</button>
+        <button type="button" role="radio" aria-checked="false" data-ex="rainforest">Places365</button>
+      </div>
+    </div>
+    <svg class="xp-svg" viewBox="0 0 860 250" role="img"
+      aria-label="One image with its prediction and the top contributing concepts of the original DN-CBM"></svg>
+  </figure>
+  <p class="figure-caption">
+    <span class="figure-num">Figure 5.</span> The concepts that contribute most to one
+    prediction of the original DN-CBM.
+  </p>
+</section>
