@@ -1,11 +1,31 @@
 ---
 import Base from '../layouts/Base.astro';
-import List from '../components/List.astro';
 ---
 <Base>
-  <h2><a href="/research/">Research</a></h2>
-  <List collection="research" limit={3} />
-
-  <h2><a href="/projects/">Projects</a></h2>
-  <List collection="projects" limit={3} />
+  <section class="intro">
+    <p>
+      I'm interested in machine learning and deep learning, both in research and
+      its applications. I hold two cum laude master's degrees: Artificial Intelligence at
+      the University of Amsterdam, and Econometrics and Operations Research at the Vrije
+      Universiteit Amsterdam. I previously interned at <a href="https://wair.ai">WAIR</a>,
+      a retail forecasting scale-up.
+    </p>
+    <p>
+      My interests include geometric deep learning, mechanistic interpretability, and time
+      series modelling, from classical statistics to foundation models. This
+      site is where I document my work, because I enjoy communicating the things I'm
+      excited about.
+    </p>
+    <p>
+      I used to row competitively as a student athlete, and I bring that work ethic and
+      collaborative attitude to everything I do.
+      Feel free to <a href="mailto:freek.byrman@gmail.com">reach out</a>.
+    </p>
+  </section>
 </Base>
+
+<style>
+  .intro { font-size: 1.08rem; }
+  .intro p { margin: 0 0 0.9rem; }
+  .intro p:last-child { margin-bottom: 0; }
+</style>
